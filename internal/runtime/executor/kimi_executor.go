@@ -24,19 +24,19 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// KimiExecutor is a stateless executor for Kimi API using OpenAI-compatible chat completions.
+// KimiExecutor 为使用 OpenAI 兼容 chat completions 的 Kimi API 实现无状态执行器。
 type KimiExecutor struct {
 	ClaudeExecutor
 	cfg *config.Config
 }
 
-// NewKimiExecutor creates a new Kimi executor.
+// NewKimiExecutor 创建新的 Kimi 执行器。
 func NewKimiExecutor(cfg *config.Config) *KimiExecutor { return &KimiExecutor{cfg: cfg} }
 
-// Identifier returns the executor identifier.
+// Identifier 返回执行器标识。
 func (e *KimiExecutor) Identifier() string { return "kimi" }
 
-// PrepareRequest injects Kimi credentials into the outgoing HTTP request.
+// PrepareRequest 将 Kimi 凭证注入出站 HTTP 请求。
 func (e *KimiExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -48,10 +48,10 @@ func (e *KimiExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth
 	return nil
 }
 
-// HttpRequest injects Kimi credentials into the request and executes it.
+// HttpRequest 将 Kimi 凭证注入请求并执行。
 func (e *KimiExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("kimi executor: request is nil")
+		return nil, fmt.Errorf("kimi 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -64,7 +64,7 @@ func (e *KimiExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth,
 	return httpClient.Do(httpReq)
 }
 
-// Execute performs a non-streaming chat completion request to Kimi.
+// Execute 对 Kimi 执行非流式 chat completion 请求。
 func (e *KimiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	from := opts.SourceFormat
 	if from.String() == "claude" {
@@ -92,7 +92,7 @@ func (e *KimiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req
 	upstreamModel := stripKimiPrefix(baseModel)
 	body, err = sjson.SetBytes(body, "model", upstreamModel)
 	if err != nil {
-		return resp, fmt.Errorf("kimi executor: failed to set model in payload: %w", err)
+		return resp, fmt.Errorf("kimi 执行器: 设置 model 失败: %w", err)
 	}
 
 	body, err = thinking.ApplyThinking(body, req.Model, from.String(), "kimi", e.Identifier())
@@ -139,7 +139,7 @@ func (e *KimiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("kimi executor: close response body error: %v", errClose)
+			log.Errorf("kimi 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -165,7 +165,7 @@ func (e *KimiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req
 	return resp, nil
 }
 
-// ExecuteStream performs a streaming chat completion request to Kimi.
+// ExecuteStream 对 Kimi 执行流式 chat completion 请求。
 func (e *KimiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	from := opts.SourceFormat
 	if from.String() == "claude" {
@@ -202,7 +202,7 @@ func (e *KimiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Aut
 
 	body, err = sjson.SetBytes(body, "stream_options.include_usage", true)
 	if err != nil {
-		return nil, fmt.Errorf("kimi executor: failed to set stream_options in payload: %w", err)
+		return nil, fmt.Errorf("kimi 执行器: 设置 stream_options 失败: %w", err)
 	}
 	requestedModel := payloadRequestedModel(opts, req.Model)
 	body = applyPayloadConfigWithRoot(e.cfg, baseModel, to.String(), "", body, originalTranslated, requestedModel)
@@ -247,7 +247,7 @@ func (e *KimiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Aut
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("kimi executor: close response body error: %v", errClose)
+			log.Errorf("kimi 执行器: 关闭响应体错误: %v", errClose)
 		}
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return nil, err
@@ -258,7 +258,7 @@ func (e *KimiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Aut
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("kimi executor: close response body error: %v", errClose)
+				log.Errorf("kimi 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -288,7 +288,7 @@ func (e *KimiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Aut
 	return stream, nil
 }
 
-// CountTokens estimates token count for Kimi requests.
+// CountTokens 估算 Kimi 请求的 token 数。
 func (e *KimiExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	auth.Attributes["base_url"] = kimiauth.KimiAPIBaseURL
 	return e.ClaudeExecutor.CountTokens(ctx, auth, req, opts)
@@ -347,7 +347,7 @@ func normalizeKimiToolMessageLinks(body []byte) ([]byte, error) {
 				path := fmt.Sprintf("messages.%d.reasoning_content", msgIdx)
 				next, err := sjson.SetBytes(out, path, reasoningText)
 				if err != nil {
-					return body, fmt.Errorf("kimi executor: failed to set assistant reasoning_content: %w", err)
+					return body, fmt.Errorf("kimi 执行器: 设置 assistant reasoning_content 失败: %w", err)
 				}
 				out = next
 				patchedReasoning++
@@ -368,7 +368,7 @@ func normalizeKimiToolMessageLinks(body []byte) ([]byte, error) {
 					path := fmt.Sprintf("messages.%d.tool_call_id", msgIdx)
 					next, err := sjson.SetBytes(out, path, toolCallID)
 					if err != nil {
-						return body, fmt.Errorf("kimi executor: failed to set tool_call_id from call_id: %w", err)
+						return body, fmt.Errorf("kimi 执行器: 从 call_id 设置 tool_call_id 失败: %w", err)
 					}
 					out = next
 					patched++
@@ -380,7 +380,7 @@ func normalizeKimiToolMessageLinks(body []byte) ([]byte, error) {
 					path := fmt.Sprintf("messages.%d.tool_call_id", msgIdx)
 					next, err := sjson.SetBytes(out, path, toolCallID)
 					if err != nil {
-						return body, fmt.Errorf("kimi executor: failed to infer tool_call_id: %w", err)
+						return body, fmt.Errorf("kimi 执行器: 推断 tool_call_id 失败: %w", err)
 					}
 					out = next
 					patched++
@@ -438,11 +438,11 @@ func fallbackAssistantReasoning(msg gjson.Result, hasLatest bool, latest string)
 	return "[reasoning unavailable]"
 }
 
-// Refresh refreshes the Kimi token using the refresh token.
+// Refresh 使用 refresh token 刷新 Kimi 令牌。
 func (e *KimiExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
-	log.Debugf("kimi executor: refresh called")
+	log.Debugf("kimi 执行器: 已调用 refresh")
 	if auth == nil {
-		return nil, fmt.Errorf("kimi executor: auth is nil")
+		return nil, fmt.Errorf("kimi 执行器: auth 为 nil")
 	}
 	// Expect refresh_token in metadata for OAuth-based accounts
 	var refreshToken string
@@ -478,8 +478,7 @@ func (e *KimiExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*c
 	return auth, nil
 }
 
-// applyKimiHeaders sets required headers for Kimi API requests.
-// Headers match kimi-cli client for compatibility.
+// applyKimiHeaders 为 Kimi API 请求设置必需的请求头，与 kimi-cli 客户端保持兼容。
 func applyKimiHeaders(r *http.Request, token string, stream bool) {
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Authorization", "Bearer "+token)
@@ -544,7 +543,7 @@ func applyKimiHeadersWithAuth(r *http.Request, token string, stream bool, auth *
 	}
 }
 
-// getKimiHostname returns the machine hostname.
+// getKimiHostname 返回机器主机名。
 func getKimiHostname() string {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -553,12 +552,12 @@ func getKimiHostname() string {
 	return hostname
 }
 
-// getKimiDeviceModel returns a device model string matching kimi-cli format.
+// getKimiDeviceModel 返回匹配 kimi-cli 格式的设备模型字符串。
 func getKimiDeviceModel() string {
 	return fmt.Sprintf("%s %s", runtime.GOOS, runtime.GOARCH)
 }
 
-// getKimiDeviceID returns a stable device ID, matching kimi-cli storage location.
+// getKimiDeviceID 返回稳定的设备 ID，匹配 kimi-cli 存储位置。
 func getKimiDeviceID() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -585,7 +584,7 @@ func getKimiDeviceID() string {
 	return "cli-proxy-api-device"
 }
 
-// kimiCreds extracts the access token from auth.
+// kimiCreds 从 auth 中提取 access token。
 func kimiCreds(a *cliproxyauth.Auth) (token string) {
 	if a == nil {
 		return ""
@@ -608,7 +607,7 @@ func kimiCreds(a *cliproxyauth.Auth) (token string) {
 	return ""
 }
 
-// stripKimiPrefix removes the "kimi-" prefix from model names for the upstream API.
+// stripKimiPrefix 从模型名中移除 "kimi-" 前缀以适配上游 API。
 func stripKimiPrefix(model string) string {
 	model = strings.TrimSpace(model)
 	if strings.HasPrefix(strings.ToLower(model), "kimi-") {

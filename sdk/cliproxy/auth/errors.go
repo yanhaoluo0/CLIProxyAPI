@@ -1,6 +1,6 @@
 package auth
 
-// Error describes an authentication related failure in a provider agnostic format.
+// Error 以与提供方无关的格式描述认证相关失败。
 type Error struct {
 	// Code is a short machine readable identifier.
 	Code string `json:"code,omitempty"`
@@ -12,7 +12,7 @@ type Error struct {
 	HTTPStatus int `json:"http_status,omitempty"`
 }
 
-// Error implements the error interface.
+// Error 实现 error 接口。
 func (e *Error) Error() string {
 	if e == nil {
 		return ""
@@ -23,7 +23,7 @@ func (e *Error) Error() string {
 	return e.Code + ": " + e.Message
 }
 
-// StatusCode implements optional status accessor for manager decision making.
+// StatusCode 为管理器决策实现可选的状态码访问器。
 func (e *Error) StatusCode() int {
 	if e == nil {
 		return 0

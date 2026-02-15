@@ -13,16 +13,15 @@ import (
 	coreauth "github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy/auth"
 )
 
-// FileSynthesizer generates Auth entries from OAuth JSON files.
-// It handles file-based authentication and Gemini virtual auth generation.
+// FileSynthesizer 从 OAuth JSON 文件生成 Auth 认证条目，处理文件认证与 Gemini 虚拟认证生成。
 type FileSynthesizer struct{}
 
-// NewFileSynthesizer creates a new FileSynthesizer instance.
+// NewFileSynthesizer 创建新的 FileSynthesizer 实例。
 func NewFileSynthesizer() *FileSynthesizer {
 	return &FileSynthesizer{}
 }
 
-// Synthesize generates Auth entries from auth files in the auth directory.
+// Synthesize 从 auth 目录下的 auth 文件生成 Auth 认证条目。
 func (s *FileSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth, error) {
 	out := make([]*coreauth.Auth, 0, 16)
 	if ctx == nil || ctx.AuthDir == "" {
@@ -140,8 +139,7 @@ func (s *FileSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth, e
 	return out, nil
 }
 
-// SynthesizeGeminiVirtualAuths creates virtual Auth entries for multi-project Gemini credentials.
-// It disables the primary auth and creates one virtual auth per project.
+// SynthesizeGeminiVirtualAuths 为多项目 Gemini 凭证创建虚拟 Auth 认证条目，禁用主认证并为每个项目创建一个虚拟认证。
 func SynthesizeGeminiVirtualAuths(primary *coreauth.Auth, metadata map[string]any, now time.Time) []*coreauth.Auth {
 	if primary == nil || metadata == nil {
 		return nil
@@ -226,7 +224,7 @@ func SynthesizeGeminiVirtualAuths(primary *coreauth.Auth, metadata map[string]an
 	return virtuals
 }
 
-// splitGeminiProjectIDs extracts and deduplicates project IDs from metadata.
+// splitGeminiProjectIDs 从元数据中提取并去重项目 ID。
 func splitGeminiProjectIDs(metadata map[string]any) []string {
 	raw, _ := metadata["project_id"].(string)
 	trimmed := strings.TrimSpace(raw)
@@ -250,7 +248,7 @@ func splitGeminiProjectIDs(metadata map[string]any) []string {
 	return result
 }
 
-// buildGeminiVirtualID constructs a virtual auth ID from base ID and project ID.
+// buildGeminiVirtualID 从基础 ID 与项目 ID 构造虚拟认证 ID。
 func buildGeminiVirtualID(baseID, projectID string) string {
 	project := strings.TrimSpace(projectID)
 	if project == "" {
@@ -260,8 +258,7 @@ func buildGeminiVirtualID(baseID, projectID string) string {
 	return fmt.Sprintf("%s::%s", baseID, replacer.Replace(project))
 }
 
-// extractExcludedModelsFromMetadata reads per-account excluded models from the OAuth JSON metadata.
-// Supports both "excluded_models" and "excluded-models" keys, and accepts both []string and []interface{}.
+// extractExcludedModelsFromMetadata 从 OAuth JSON 元数据读取每个账号的排除模型。
 func extractExcludedModelsFromMetadata(metadata map[string]any) []string {
 	if metadata == nil {
 		return nil

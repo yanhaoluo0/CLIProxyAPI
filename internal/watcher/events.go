@@ -28,16 +28,16 @@ func matchProvider(provider string, targets []string) (string, bool) {
 
 func (w *Watcher) start(ctx context.Context) error {
 	if errAddConfig := w.watcher.Add(w.configPath); errAddConfig != nil {
-		log.Errorf("failed to watch config file %s: %v", w.configPath, errAddConfig)
+		log.Errorf("监听配置文件 %s 失败: %v", w.configPath, errAddConfig)
 		return errAddConfig
 	}
-	log.Debugf("watching config file: %s", w.configPath)
+	log.Debugf("正在监听配置文件: %s", w.configPath)
 
 	if errAddAuthDir := w.watcher.Add(w.authDir); errAddAuthDir != nil {
-		log.Errorf("failed to watch auth directory %s: %v", w.authDir, errAddAuthDir)
+		log.Errorf("监听认证目录 %s 失败: %v", w.authDir, errAddAuthDir)
 		return errAddAuthDir
 	}
-	log.Debugf("watching auth directory: %s", w.authDir)
+	log.Debugf("正在监听认证目录: %s", w.authDir)
 
 	go w.processEvents(ctx)
 
@@ -59,7 +59,7 @@ func (w *Watcher) processEvents(ctx context.Context) {
 			if !ok {
 				return
 			}
-			log.Errorf("file watcher error: %v", errWatch)
+			log.Errorf("文件监听器错误: %v", errWatch)
 		}
 	}
 }
@@ -79,11 +79,11 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	}
 
 	now := time.Now()
-	log.Debugf("file system event detected: %s %s", event.Op.String(), event.Name)
+	log.Debugf("文件系统事件检测: %s %s", event.Op.String(), event.Name)
 
 	// Handle config file changes
 	if isConfigEvent {
-		log.Debugf("config file change details - operation: %s, timestamp: %s", event.Op.String(), now.Format("2006-01-02 15:04:05.000"))
+		log.Debugf("配置文件变更详情 - 操作: %s, 时间戳: %s", event.Op.String(), now.Format("2006-01-02 15:04:05.000"))
 		w.scheduleConfigReload()
 		return
 	}
@@ -91,7 +91,7 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	// Handle auth directory changes incrementally (.json only)
 	if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {
 		if w.shouldDebounceRemove(normalizedName, now) {
-			log.Debugf("debouncing remove event for %s", filepath.Base(event.Name))
+			log.Debugf("正在对移除事件做去抖动: %s", filepath.Base(event.Name))
 			return
 		}
 		// Atomic replace on some platforms may surface as Rename (or Remove) before the new file is ready.

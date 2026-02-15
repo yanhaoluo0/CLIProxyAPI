@@ -1,6 +1,4 @@
-// Package executor provides runtime execution capabilities for various AI service providers.
-// It includes stateless executors that handle API requests, streaming responses,
-// token counting, and authentication refresh for different AI service providers.
+// Package executor 为多种 AI 服务提供运行时执行能力，包含处理 API 请求、流式响应、计 token 与认证刷新的无状态执行器。
 package executor
 
 import (
@@ -34,29 +32,21 @@ const (
 	streamScannerBuffer = 52_428_800
 )
 
-// GeminiExecutor is a stateless executor for the official Gemini API using API keys.
-// It handles both API key and OAuth bearer token authentication, supporting both
-// regular and streaming requests to the Google Generative Language API.
+// GeminiExecutor 为官方 Gemini API（API key）实现无状态执行器，支持 API key 与 OAuth bearer token 认证，兼容普通与流式请求。
 type GeminiExecutor struct {
 	// cfg holds the application configuration.
 	cfg *config.Config
 }
 
-// NewGeminiExecutor creates a new Gemini executor instance.
-//
-// Parameters:
-//   - cfg: The application configuration
-//
-// Returns:
-//   - *GeminiExecutor: A new Gemini executor instance
+// NewGeminiExecutor 创建新的 Gemini 执行器实例。
 func NewGeminiExecutor(cfg *config.Config) *GeminiExecutor {
 	return &GeminiExecutor{cfg: cfg}
 }
 
-// Identifier returns the executor identifier.
+// Identifier 返回执行器标识。
 func (e *GeminiExecutor) Identifier() string { return "gemini" }
 
-// PrepareRequest injects Gemini credentials into the outgoing HTTP request.
+// PrepareRequest 将 Gemini 凭证注入出站 HTTP 请求。
 func (e *GeminiExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -73,10 +63,10 @@ func (e *GeminiExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Au
 	return nil
 }
 
-// HttpRequest injects Gemini credentials into the request and executes it.
+// HttpRequest 将 Gemini 凭证注入请求并执行。
 func (e *GeminiExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("gemini executor: request is nil")
+		return nil, fmt.Errorf("gemini 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -89,19 +79,7 @@ func (e *GeminiExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Aut
 	return httpClient.Do(httpReq)
 }
 
-// Execute performs a non-streaming request to the Gemini API.
-// It translates the request to Gemini format, sends it to the API, and translates
-// the response back to the requested format.
-//
-// Parameters:
-//   - ctx: The context for the request
-//   - auth: The authentication information
-//   - req: The request to execute
-//   - opts: Additional execution options
-//
-// Returns:
-//   - cliproxyexecutor.Response: The response from the API
-//   - error: An error if the request fails
+// Execute 对 Gemini API 执行非流式请求：将请求转换为 Gemini 格式发送，再将响应转回请求格式。
 func (e *GeminiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	if opts.Alt == "responses/compact" {
 		return resp, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -185,7 +163,7 @@ func (e *GeminiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, r
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("gemini executor: close response body error: %v", errClose)
+			log.Errorf("gemini 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -209,7 +187,7 @@ func (e *GeminiExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, r
 	return resp, nil
 }
 
-// ExecuteStream performs a streaming request to the Gemini API.
+// ExecuteStream 对 Gemini API 执行流式请求。
 func (e *GeminiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	if opts.Alt == "responses/compact" {
 		return nil, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -292,7 +270,7 @@ func (e *GeminiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("gemini executor: close response body error: %v", errClose)
+			log.Errorf("gemini 执行器: 关闭响应体错误: %v", errClose)
 		}
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return nil, err
@@ -303,7 +281,7 @@ func (e *GeminiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("gemini executor: close response body error: %v", errClose)
+				log.Errorf("gemini 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -338,7 +316,7 @@ func (e *GeminiExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 	return stream, nil
 }
 
-// CountTokens counts tokens for the given request using the Gemini API.
+// CountTokens 使用 Gemini API 为给定请求计 token 数。
 func (e *GeminiExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -419,7 +397,7 @@ func (e *GeminiExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Aut
 	return cliproxyexecutor.Response{Payload: []byte(translated)}, nil
 }
 
-// Refresh refreshes the authentication credentials (no-op for Gemini API key).
+// Refresh 刷新认证凭证（对 Gemini API key 为 no-op）。
 func (e *GeminiExecutor) Refresh(_ context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
 	return auth, nil
 }

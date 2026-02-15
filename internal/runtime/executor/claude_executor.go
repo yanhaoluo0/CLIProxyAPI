@@ -29,8 +29,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ClaudeExecutor is a stateless executor for Anthropic Claude over the messages API.
-// If api_key is unavailable on auth, it falls back to legacy via ClientAdapter.
+// ClaudeExecutor 为 Anthropic Claude messages API 的无状态执行器；auth 无 api_key 时通过 ClientAdapter 回退到旧逻辑。
 type ClaudeExecutor struct {
 	cfg *config.Config
 }
@@ -41,7 +40,7 @@ func NewClaudeExecutor(cfg *config.Config) *ClaudeExecutor { return &ClaudeExecu
 
 func (e *ClaudeExecutor) Identifier() string { return "claude" }
 
-// PrepareRequest injects Claude credentials into the outgoing HTTP request.
+// PrepareRequest 将 Claude 凭证注入出站 HTTP 请求。
 func (e *ClaudeExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -67,10 +66,10 @@ func (e *ClaudeExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Au
 	return nil
 }
 
-// HttpRequest injects Claude credentials into the request and executes it.
+// HttpRequest 将 Claude 凭证注入请求并执行。
 func (e *ClaudeExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("claude executor: request is nil")
+		return nil, fmt.Errorf("claude 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -175,7 +174,7 @@ func (e *ClaudeExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, r
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 		return resp, err
 	}
@@ -183,13 +182,13 @@ func (e *ClaudeExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, r
 	if err != nil {
 		recordAPIResponseError(ctx, e.cfg, err)
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 		return resp, err
 	}
 	defer func() {
 		if errClose := decodedBody.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 	}()
 	data, err := io.ReadAll(decodedBody)
@@ -315,7 +314,7 @@ func (e *ClaudeExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return nil, err
@@ -324,7 +323,7 @@ func (e *ClaudeExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 	if err != nil {
 		recordAPIResponseError(ctx, e.cfg, err)
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 		return nil, err
 	}
@@ -334,7 +333,7 @@ func (e *ClaudeExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 		defer close(out)
 		defer func() {
 			if errClose := decodedBody.Close(); errClose != nil {
-				log.Errorf("response body close error: %v", errClose)
+				log.Errorf("关闭响应体错误: %v", errClose)
 			}
 		}()
 
@@ -462,7 +461,7 @@ func (e *ClaudeExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Aut
 		b, _ := io.ReadAll(resp.Body)
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		if errClose := resp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 		return cliproxyexecutor.Response{}, statusErr{code: resp.StatusCode, msg: string(b)}
 	}
@@ -470,13 +469,13 @@ func (e *ClaudeExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Aut
 	if err != nil {
 		recordAPIResponseError(ctx, e.cfg, err)
 		if errClose := resp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 		return cliproxyexecutor.Response{}, err
 	}
 	defer func() {
 		if errClose := decodedBody.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 	}()
 	data, err := io.ReadAll(decodedBody)
@@ -491,9 +490,9 @@ func (e *ClaudeExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Aut
 }
 
 func (e *ClaudeExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
-	log.Debugf("claude executor: refresh called")
+	log.Debugf("claude 执行器: 已调用 refresh")
 	if auth == nil {
-		return nil, fmt.Errorf("claude executor: auth is nil")
+		return nil, fmt.Errorf("claude 执行器: auth 为 nil")
 	}
 	var refreshToken string
 	if auth.Metadata != nil {
@@ -524,8 +523,7 @@ func (e *ClaudeExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (
 	return auth, nil
 }
 
-// extractAndRemoveBetas extracts the "betas" array from the body and removes it.
-// Returns the extracted betas as a string slice and the modified body.
+// extractAndRemoveBetas 从 body 中提取并移除 "betas" 数组，返回 betas 与修改后的 body。
 func extractAndRemoveBetas(body []byte) ([]string, []byte) {
 	betasResult := gjson.GetBytes(body, "betas")
 	if !betasResult.Exists() {
@@ -545,9 +543,7 @@ func extractAndRemoveBetas(body []byte) ([]string, []byte) {
 	return betas, body
 }
 
-// disableThinkingIfToolChoiceForced checks if tool_choice forces tool use and disables thinking.
-// Anthropic API does not allow thinking when tool_choice is set to "any" or a specific tool.
-// See: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations
+// disableThinkingIfToolChoiceForced 在 tool_choice 强制使用工具时关闭 thinking；Anthropic API 在 tool_choice 为 "any" 或指定工具时不允许 thinking。
 func disableThinkingIfToolChoiceForced(body []byte) []byte {
 	toolChoiceType := gjson.GetBytes(body, "tool_choice.type").String()
 	// "auto" is allowed with thinking, but "any" or "tool" (specific tool) are not
@@ -578,7 +574,7 @@ func (c *compositeReadCloser) Close() error {
 
 func decodeResponseBody(body io.ReadCloser, contentEncoding string) (io.ReadCloser, error) {
 	if body == nil {
-		return nil, fmt.Errorf("response body is nil")
+		return nil, fmt.Errorf("响应体为 nil")
 	}
 	if contentEncoding == "" {
 		return body, nil
@@ -593,7 +589,7 @@ func decodeResponseBody(body io.ReadCloser, contentEncoding string) (io.ReadClos
 			gzipReader, err := gzip.NewReader(body)
 			if err != nil {
 				_ = body.Close()
-				return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+				return nil, fmt.Errorf("创建 gzip reader 失败: %w", err)
 			}
 			return &compositeReadCloser{
 				Reader: gzipReader,
@@ -622,7 +618,7 @@ func decodeResponseBody(body io.ReadCloser, contentEncoding string) (io.ReadClos
 			decoder, err := zstd.NewReader(body)
 			if err != nil {
 				_ = body.Close()
-				return nil, fmt.Errorf("failed to create zstd reader: %w", err)
+				return nil, fmt.Errorf("创建 zstd reader 失败: %w", err)
 			}
 			return &compositeReadCloser{
 				Reader: decoder,
@@ -853,7 +849,7 @@ func stripClaudeToolPrefixFromStreamLine(line []byte, prefix string) []byte {
 	return updated
 }
 
-// getClientUserAgent extracts the client User-Agent from the gin context.
+// getClientUserAgent 从 gin 上下文中提取客户端 User-Agent。
 func getClientUserAgent(ctx context.Context) string {
 	if ginCtx, ok := ctx.Value("gin").(*gin.Context); ok && ginCtx != nil && ginCtx.Request != nil {
 		return ginCtx.GetHeader("User-Agent")
@@ -861,8 +857,7 @@ func getClientUserAgent(ctx context.Context) string {
 	return ""
 }
 
-// getCloakConfigFromAuth extracts cloak configuration from auth attributes.
-// Returns (cloakMode, strictMode, sensitiveWords).
+// getCloakConfigFromAuth 从 auth 属性中提取 cloak 配置，返回 (cloakMode, strictMode, sensitiveWords)。
 func getCloakConfigFromAuth(auth *cliproxyauth.Auth) (string, bool, []string) {
 	if auth == nil || auth.Attributes == nil {
 		return "auto", false, nil
@@ -886,7 +881,7 @@ func getCloakConfigFromAuth(auth *cliproxyauth.Auth) (string, bool, []string) {
 	return cloakMode, strictMode, sensitiveWords
 }
 
-// resolveClaudeKeyCloakConfig finds the matching ClaudeKey config and returns its CloakConfig.
+// resolveClaudeKeyCloakConfig 查找匹配的 ClaudeKey 配置并返回其 CloakConfig。
 func resolveClaudeKeyCloakConfig(cfg *config.Config, auth *cliproxyauth.Auth) *config.CloakConfig {
 	if cfg == nil || auth == nil {
 		return nil
@@ -915,7 +910,7 @@ func resolveClaudeKeyCloakConfig(cfg *config.Config, auth *cliproxyauth.Auth) *c
 	return nil
 }
 
-// injectFakeUserID generates and injects a fake user ID into the request metadata.
+// injectFakeUserID 生成并注入伪造 user ID 到请求元数据。
 func injectFakeUserID(payload []byte) []byte {
 	metadata := gjson.GetBytes(payload, "metadata")
 	if !metadata.Exists() {
@@ -930,9 +925,7 @@ func injectFakeUserID(payload []byte) []byte {
 	return payload
 }
 
-// checkSystemInstructionsWithMode injects Claude Code system prompt.
-// In strict mode, it replaces all user system messages.
-// In non-strict mode (default), it prepends to existing system messages.
+// checkSystemInstructionsWithMode 注入 Claude Code 系统提示；严格模式下替换所有用户系统消息，非严格模式下追加到现有系统消息前。
 func checkSystemInstructionsWithMode(payload []byte, strictMode bool) []byte {
 	system := gjson.GetBytes(payload, "system")
 	claudeCodeInstructions := `[{"type":"text","text":"You are Claude Code, Anthropic's official CLI for Claude."}]`
@@ -960,8 +953,7 @@ func checkSystemInstructionsWithMode(payload []byte, strictMode bool) []byte {
 	return payload
 }
 
-// applyCloaking applies cloaking transformations to the payload based on config and client.
-// Cloaking includes: system prompt injection, fake user ID, and sensitive word obfuscation.
+// applyCloaking 根据配置与客户端对 payload 做 cloak 变换：系统提示注入、伪造 user ID、敏感词混淆。
 func applyCloaking(ctx context.Context, cfg *config.Config, auth *cliproxyauth.Auth, payload []byte, model string) []byte {
 	clientUserAgent := getClientUserAgent(ctx)
 
@@ -1013,16 +1005,7 @@ func applyCloaking(ctx context.Context, cfg *config.Config, auth *cliproxyauth.A
 	return payload
 }
 
-// ensureCacheControl injects cache_control breakpoints into the payload for optimal prompt caching.
-// According to Anthropic's documentation, cache prefixes are created in order: tools -> system -> messages.
-// This function adds cache_control to:
-// 1. The LAST tool in the tools array (caches all tool definitions)
-// 2. The LAST element in the system array (caches system prompt)
-// 3. The SECOND-TO-LAST user turn (caches conversation history for multi-turn)
-//
-// Up to 4 cache breakpoints are allowed per request. Tools, System, and Messages are INDEPENDENT breakpoints.
-// This enables up to 90% cost reduction on cached tokens (cache read = 0.1x base price).
-// See: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
+// ensureCacheControl 为最优 prompt 缓存向 payload 注入 cache_control 断点：最后一项 tool、最后一项 system、倒数第二条 user；每请求最多 4 个断点，可显著降低缓存 token 成本。
 func ensureCacheControl(payload []byte) []byte {
 	// 1. Inject cache_control into the LAST tool (caches all tool definitions)
 	// Tools are cached first in the hierarchy, so this is the most important breakpoint.
@@ -1084,12 +1067,7 @@ func countCacheControls(payload []byte) int {
 	return count
 }
 
-// injectMessagesCacheControl adds cache_control to the second-to-last user turn for multi-turn caching.
-// Per Anthropic docs: "Place cache_control on the second-to-last User message to let the model reuse the earlier cache."
-// This enables caching of conversation history, which is especially beneficial for long multi-turn conversations.
-// Only adds cache_control if:
-// - There are at least 2 user turns in the conversation
-// - No message content already has cache_control
+// injectMessagesCacheControl 在倒数第二条 user 消息上添加 cache_control 以实现多轮缓存；仅当至少 2 条 user 且尚无 cache_control 时添加。
 func injectMessagesCacheControl(payload []byte) []byte {
 	messages := gjson.GetBytes(payload, "messages")
 	if !messages.Exists() || !messages.IsArray() {
@@ -1143,7 +1121,7 @@ func injectMessagesCacheControl(payload []byte) []byte {
 			cacheControlPath := fmt.Sprintf("messages.%d.content.%d.cache_control", secondToLastUserIdx, contentCount-1)
 			result, err := sjson.SetBytes(payload, cacheControlPath, map[string]string{"type": "ephemeral"})
 			if err != nil {
-				log.Warnf("failed to inject cache_control into messages: %v", err)
+				log.Warnf("向 messages 注入 cache_control 失败: %v", err)
 				return payload
 			}
 			payload = result
@@ -1162,7 +1140,7 @@ func injectMessagesCacheControl(payload []byte) []byte {
 		}
 		result, err := sjson.SetBytes(payload, contentPath, newContent)
 		if err != nil {
-			log.Warnf("failed to inject cache_control into message string content: %v", err)
+			log.Warnf("向 message 字符串内容注入 cache_control 失败: %v", err)
 			return payload
 		}
 		payload = result
@@ -1171,9 +1149,7 @@ func injectMessagesCacheControl(payload []byte) []byte {
 	return payload
 }
 
-// injectToolsCacheControl adds cache_control to the last tool in the tools array.
-// Per Anthropic docs: "The cache_control parameter on the last tool definition caches all tool definitions."
-// This only adds cache_control if NO tool in the array already has it.
+// injectToolsCacheControl 在 tools 数组最后一项上添加 cache_control；仅当尚无任何 tool 含 cache_control 时添加。
 func injectToolsCacheControl(payload []byte) []byte {
 	tools := gjson.GetBytes(payload, "tools")
 	if !tools.Exists() || !tools.IsArray() {
@@ -1202,16 +1178,14 @@ func injectToolsCacheControl(payload []byte) []byte {
 	lastToolPath := fmt.Sprintf("tools.%d.cache_control", toolCount-1)
 	result, err := sjson.SetBytes(payload, lastToolPath, map[string]string{"type": "ephemeral"})
 	if err != nil {
-		log.Warnf("failed to inject cache_control into tools array: %v", err)
+		log.Warnf("向 tools 数组注入 cache_control 失败: %v", err)
 		return payload
 	}
 
 	return result
 }
 
-// injectSystemCacheControl adds cache_control to the last element in the system prompt.
-// Converts string system prompts to array format if needed.
-// This only adds cache_control if NO system element already has it.
+// injectSystemCacheControl 在 system 提示最后一项上添加 cache_control，必要时将字符串转为数组；仅当尚无 system 项含 cache_control 时添加。
 func injectSystemCacheControl(payload []byte) []byte {
 	system := gjson.GetBytes(payload, "system")
 	if !system.Exists() {
@@ -1241,7 +1215,7 @@ func injectSystemCacheControl(payload []byte) []byte {
 		lastSystemPath := fmt.Sprintf("system.%d.cache_control", count-1)
 		result, err := sjson.SetBytes(payload, lastSystemPath, map[string]string{"type": "ephemeral"})
 		if err != nil {
-			log.Warnf("failed to inject cache_control into system array: %v", err)
+			log.Warnf("向 system 数组注入 cache_control 失败: %v", err)
 			return payload
 		}
 		payload = result
@@ -1260,7 +1234,7 @@ func injectSystemCacheControl(payload []byte) []byte {
 		}
 		result, err := sjson.SetBytes(payload, "system", newSystem)
 		if err != nil {
-			log.Warnf("failed to inject cache_control into system string: %v", err)
+			log.Warnf("向 system 字符串注入 cache_control 失败: %v", err)
 			return payload
 		}
 		payload = result

@@ -1,7 +1,5 @@
-// Package config provides configuration management for the CLI Proxy API server.
-// It handles loading and parsing YAML configuration files, and provides structured
-// access to application settings including server port, authentication directory,
-// debug settings, proxy configuration, and API keys.
+// Package config 提供 CLI Proxy API 服务端的配置管理。
+// 负责加载与解析 YAML 配置文件，并提供对服务端口、认证目录、调试、代理与 API 密钥等配置的结构化访问。
 package config
 
 import (
@@ -23,492 +21,305 @@ const (
 	DefaultPprofAddr             = "127.0.0.1:8316"
 )
 
-// Config represents the application's configuration, loaded from a YAML file.
+// Config 表示从 YAML 文件加载的应用配置。
 type Config struct {
 	SDKConfig `yaml:",inline"`
-	// Host is the network host/interface on which the API server will bind.
-	// Default is empty ("") to bind all interfaces (IPv4 + IPv6). Use "127.0.0.1" or "localhost" for local-only access.
+	// Host 为 API 服务绑定的网络地址，空表示绑定所有接口；"127.0.0.1" 或 "localhost" 表示仅本机访问。
 	Host string `yaml:"host" json:"-"`
-	// Port is the network port on which the API server will listen.
+	// Port 为 API 服务监听端口。
 	Port int `yaml:"port" json:"-"`
 
-	// TLS config controls HTTPS server settings.
 	TLS TLSConfig `yaml:"tls" json:"tls"`
 
-	// RemoteManagement nests management-related options under 'remote-management'.
+	// RemoteManagement 为 remote-management 下的管理相关配置。
 	RemoteManagement RemoteManagement `yaml:"remote-management" json:"-"`
 
-	// AuthDir is the directory where authentication token files are stored.
+	// AuthDir 为认证令牌文件所在目录。
 	AuthDir string `yaml:"auth-dir" json:"-"`
 
-	// Debug enables or disables debug-level logging and other debug features.
+	// Debug 是否开启调试日志及其他调试功能。
 	Debug bool `yaml:"debug" json:"debug"`
 
-	// Pprof config controls the optional pprof HTTP debug server.
+	// Pprof 为可选的 pprof 调试 HTTP 服务配置。
 	Pprof PprofConfig `yaml:"pprof" json:"pprof"`
 
-	// CommercialMode disables high-overhead HTTP middleware features to minimize per-request memory usage.
+	// CommercialMode 为 true 时关闭高开销的 HTTP 中间件以降低单请求内存占用。
 	CommercialMode bool `yaml:"commercial-mode" json:"commercial-mode"`
 
-	// LoggingToFile controls whether application logs are written to rotating files or stdout.
+	// LoggingToFile 为 true 时日志写入轮转文件，否则输出到 stdout。
 	LoggingToFile bool `yaml:"logging-to-file" json:"logging-to-file"`
 
-	// LogsMaxTotalSizeMB limits the total size (in MB) of log files under the logs directory.
-	// When exceeded, the oldest log files are deleted until within the limit. Set to 0 to disable.
+	// LogsMaxTotalSizeMB 为日志目录下日志文件总大小上限（MB），超出时删除最旧文件；0 表示不限制。
 	LogsMaxTotalSizeMB int `yaml:"logs-max-total-size-mb" json:"logs-max-total-size-mb"`
 
-	// ErrorLogsMaxFiles limits the number of error log files retained when request logging is disabled.
-	// When exceeded, the oldest error log files are deleted. Default is 10. Set to 0 to disable cleanup.
+	// ErrorLogsMaxFiles 在关闭请求日志时保留的错误日志文件数量上限，默认 10，0 表示不清理。
 	ErrorLogsMaxFiles int `yaml:"error-logs-max-files" json:"error-logs-max-files"`
 
-	// UsageStatisticsEnabled toggles in-memory usage aggregation; when false, usage data is discarded.
+	// UsageStatisticsEnabled 是否启用内存中的用量统计；为 false 时丢弃用量数据。
 	UsageStatisticsEnabled bool `yaml:"usage-statistics-enabled" json:"usage-statistics-enabled"`
 
-	// DisableCooling disables quota cooldown scheduling when true.
+	// DisableCooling 为 true 时关闭配额冷却调度。
 	DisableCooling bool `yaml:"disable-cooling" json:"disable-cooling"`
 
-	// RequestRetry defines the retry times when the request failed.
+	// RequestRetry 请求失败时的重试次数。
 	RequestRetry int `yaml:"request-retry" json:"request-retry"`
-	// MaxRetryInterval defines the maximum wait time in seconds before retrying a cooled-down credential.
+	// MaxRetryInterval 冷却后重试前的最大等待时间（秒）。
 	MaxRetryInterval int `yaml:"max-retry-interval" json:"max-retry-interval"`
 
-	// QuotaExceeded defines the behavior when a quota is exceeded.
+	// QuotaExceeded 配额用尽时的行为配置。
 	QuotaExceeded QuotaExceeded `yaml:"quota-exceeded" json:"quota-exceeded"`
 
-	// Routing controls credential selection behavior.
+	// Routing 凭证选择策略配置。
 	Routing RoutingConfig `yaml:"routing" json:"routing"`
 
-	// WebsocketAuth enables or disables authentication for the WebSocket API.
+	// WebsocketAuth 是否对 WebSocket API 启用认证。
 	WebsocketAuth bool `yaml:"ws-auth" json:"ws-auth"`
 
-	// GeminiKey defines Gemini API key configurations with optional routing overrides.
+	// GeminiKey 为 Gemini API 密钥配置列表，可含路由覆盖。
 	GeminiKey []GeminiKey `yaml:"gemini-api-key" json:"gemini-api-key"`
 
-	// Codex defines a list of Codex API key configurations as specified in the YAML configuration file.
+	// CodexKey 为 YAML 中配置的 Codex API 密钥列表。
 	CodexKey []CodexKey `yaml:"codex-api-key" json:"codex-api-key"`
 
-	// ClaudeKey defines a list of Claude API key configurations as specified in the YAML configuration file.
+	// ClaudeKey 为 YAML 中配置的 Claude API 密钥列表。
 	ClaudeKey []ClaudeKey `yaml:"claude-api-key" json:"claude-api-key"`
 
-	// OpenAICompatibility defines OpenAI API compatibility configurations for external providers.
+	// OpenAICompatibility 为对外部提供方的 OpenAI 兼容配置列表。
 	OpenAICompatibility []OpenAICompatibility `yaml:"openai-compatibility" json:"openai-compatibility"`
 
-	// VertexCompatAPIKey defines Vertex AI-compatible API key configurations for third-party providers.
-	// Used for services that use Vertex AI-style paths but with simple API key authentication.
+	// VertexCompatAPIKey 为第三方 Vertex AI 兼容 API 密钥配置，用于使用 Vertex 风格路径但用 API Key 认证的服务。
 	VertexCompatAPIKey []VertexCompatKey `yaml:"vertex-api-key" json:"vertex-api-key"`
 
-	// AmpCode contains Amp CLI upstream configuration, management restrictions, and model mappings.
+	// AmpCode 为 Amp CLI 上游配置、管理限制与模型映射。
 	AmpCode AmpCode `yaml:"ampcode" json:"ampcode"`
 
-	// OAuthExcludedModels defines per-provider global model exclusions applied to OAuth/file-backed auth entries.
+	// OAuthExcludedModels 为按提供方生效的全局模型排除列表，作用于 OAuth/文件鉴权条目。
 	OAuthExcludedModels map[string][]string `yaml:"oauth-excluded-models,omitempty" json:"oauth-excluded-models,omitempty"`
 
-	// OAuthModelAlias defines global model name aliases for OAuth/file-backed auth channels.
-	// These aliases affect both model listing and model routing for supported channels:
-	// gemini-cli, vertex, aistudio, antigravity, claude, codex, qwen, iflow.
-	//
-	// NOTE: This does not apply to existing per-credential model alias features under:
-	// gemini-api-key, codex-api-key, claude-api-key, openai-compatibility, vertex-api-key, and ampcode.
+	// OAuthModelAlias 为 OAuth/文件鉴权渠道的全局模型别名，影响模型列表与路由；支持渠道：gemini-cli, vertex, aistudio, antigravity, claude, codex, qwen, iflow。
+	// 注意：不适用于 gemini-api-key、codex-api-key、claude-api-key、openai-compatibility、vertex-api-key、ampcode 下的按凭证别名。
 	OAuthModelAlias map[string][]OAuthModelAlias `yaml:"oauth-model-alias,omitempty" json:"oauth-model-alias,omitempty"`
 
-	// Payload defines default and override rules for provider payload parameters.
+	// Payload 为各提供方请求体的默认与覆盖规则。
 	Payload PayloadConfig `yaml:"payload" json:"payload"`
 
 	legacyMigrationPending bool `yaml:"-" json:"-"`
 }
 
-// TLSConfig holds HTTPS server settings.
+// TLSConfig 为 HTTPS 服务配置。
 type TLSConfig struct {
-	// Enable toggles HTTPS server mode.
-	Enable bool `yaml:"enable" json:"enable"`
-	// Cert is the path to the TLS certificate file.
-	Cert string `yaml:"cert" json:"cert"`
-	// Key is the path to the TLS private key file.
-	Key string `yaml:"key" json:"key"`
+	Enable bool   `yaml:"enable" json:"enable"`
+	Cert   string `yaml:"cert" json:"cert"`
+	Key    string `yaml:"key" json:"key"`
 }
 
-// PprofConfig holds pprof HTTP server settings.
+// PprofConfig 为 pprof 调试 HTTP 服务配置。
 type PprofConfig struct {
-	// Enable toggles the pprof HTTP debug server.
-	Enable bool `yaml:"enable" json:"enable"`
-	// Addr is the host:port address for the pprof HTTP server.
-	Addr string `yaml:"addr" json:"addr"`
+	Enable bool   `yaml:"enable" json:"enable"`
+	Addr   string `yaml:"addr" json:"addr"`
 }
 
-// RemoteManagement holds management API configuration under 'remote-management'.
+// RemoteManagement 为 remote-management 下的管理 API 配置。
 type RemoteManagement struct {
-	// AllowRemote toggles remote (non-localhost) access to management API.
-	AllowRemote bool `yaml:"allow-remote"`
-	// SecretKey is the management key (plaintext or bcrypt hashed). YAML key intentionally 'secret-key'.
-	SecretKey string `yaml:"secret-key"`
-	// DisableControlPanel skips serving and syncing the bundled management UI when true.
-	DisableControlPanel bool `yaml:"disable-control-panel"`
-	// PanelGitHubRepository overrides the GitHub repository used to fetch the management panel asset.
-	// Accepts either a repository URL (https://github.com/org/repo) or an API releases endpoint.
+	AllowRemote           bool   `yaml:"allow-remote"`          // 是否允许非本机访问管理 API
+	SecretKey             string `yaml:"secret-key"`            // 管理密钥（明文或 bcrypt 哈希）
+	DisableControlPanel   bool   `yaml:"disable-control-panel"` // 为 true 时不提供管理面板资源
 	PanelGitHubRepository string `yaml:"panel-github-repository"`
 }
 
-// QuotaExceeded defines the behavior when API quota limits are exceeded.
-// It provides configuration options for automatic failover mechanisms.
+// QuotaExceeded 定义 API 配额用尽时的行为（如是否自动切换项目/预览模型）。
 type QuotaExceeded struct {
-	// SwitchProject indicates whether to automatically switch to another project when a quota is exceeded.
-	SwitchProject bool `yaml:"switch-project" json:"switch-project"`
-
-	// SwitchPreviewModel indicates whether to automatically switch to a preview model when a quota is exceeded.
+	SwitchProject      bool `yaml:"switch-project" json:"switch-project"`
 	SwitchPreviewModel bool `yaml:"switch-preview-model" json:"switch-preview-model"`
 }
 
-// RoutingConfig configures how credentials are selected for requests.
+// RoutingConfig 配置请求时如何选择凭证。
 type RoutingConfig struct {
-	// Strategy selects the credential selection strategy.
-	// Supported values: "round-robin" (default), "fill-first".
+	// Strategy 支持 "round-robin"（默认）、"fill-first"。
 	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
 }
 
-// OAuthModelAlias defines a model ID alias for a specific channel.
-// It maps the upstream model name (Name) to the client-visible alias (Alias).
-// When Fork is true, the alias is added as an additional model in listings while
-// keeping the original model ID available.
+// OAuthModelAlias 为某渠道的模型 ID 别名，将上游名 Name 映射为客户端可见的 Alias；Fork 为 true 时在列表中同时保留原名与别名。
 type OAuthModelAlias struct {
 	Name  string `yaml:"name" json:"name"`
 	Alias string `yaml:"alias" json:"alias"`
 	Fork  bool   `yaml:"fork,omitempty" json:"fork,omitempty"`
 }
 
-// AmpModelMapping defines a model name mapping for Amp CLI requests.
-// When Amp requests a model that isn't available locally, this mapping
-// allows routing to an alternative model that IS available.
+// AmpModelMapping 为 Amp CLI 请求的模型名映射，当 Amp 请求的模型本地不可用时，可路由到 To 指定的可用模型。
 type AmpModelMapping struct {
-	// From is the model name that Amp CLI requests (e.g., "claude-opus-4.5").
 	From string `yaml:"from" json:"from"`
-
-	// To is the target model name to route to (e.g., "claude-sonnet-4").
-	// The target model must have available providers in the registry.
-	To string `yaml:"to" json:"to"`
-
-	// Regex indicates whether the 'from' field should be interpreted as a regular
-	// expression for matching model names. When true, this mapping is evaluated
-	// after exact matches and in the order provided. Defaults to false (exact match).
+	To   string `yaml:"to" json:"to"`
+	// Regex 为 true 时 From 按正则匹配，在精确匹配之后按配置顺序求值；默认 false 为精确匹配。
 	Regex bool `yaml:"regex,omitempty" json:"regex,omitempty"`
 }
 
-// AmpCode groups Amp CLI integration settings including upstream routing,
-// optional overrides, management route restrictions, and model fallback mappings.
+// AmpCode 汇总 Amp CLI 集成配置：上游地址、API 密钥覆盖、管理路由限制、模型回退映射。
 type AmpCode struct {
-	// UpstreamURL defines the upstream Amp control plane used for non-provider calls.
-	UpstreamURL string `yaml:"upstream-url" json:"upstream-url"`
-
-	// UpstreamAPIKey optionally overrides the Authorization header when proxying Amp upstream calls.
-	UpstreamAPIKey string `yaml:"upstream-api-key" json:"upstream-api-key"`
-
-	// UpstreamAPIKeys maps client API keys (from top-level api-keys) to upstream API keys.
-	// When a client authenticates with a key that matches an entry, that upstream key is used.
-	// If no match is found, falls back to UpstreamAPIKey (default behavior).
-	UpstreamAPIKeys []AmpUpstreamAPIKeyEntry `yaml:"upstream-api-keys,omitempty" json:"upstream-api-keys,omitempty"`
-
-	// RestrictManagementToLocalhost restricts Amp management routes (/api/user, /api/threads, etc.)
-	// to only accept connections from localhost (127.0.0.1, ::1). When true, prevents drive-by
-	// browser attacks and remote access to management endpoints. Default: false (API key auth is sufficient).
-	RestrictManagementToLocalhost bool `yaml:"restrict-management-to-localhost" json:"restrict-management-to-localhost"`
-
-	// ModelMappings defines model name mappings for Amp CLI requests.
-	// When Amp requests a model that isn't available locally, these mappings
-	// allow routing to an alternative model that IS available.
-	ModelMappings []AmpModelMapping `yaml:"model-mappings" json:"model-mappings"`
-
-	// ForceModelMappings when true, model mappings take precedence over local API keys.
-	// When false (default), local API keys are used first if available.
-	ForceModelMappings bool `yaml:"force-model-mappings" json:"force-model-mappings"`
+	UpstreamURL                   string                   `yaml:"upstream-url" json:"upstream-url"`
+	UpstreamAPIKey                string                   `yaml:"upstream-api-key" json:"upstream-api-key"`
+	UpstreamAPIKeys               []AmpUpstreamAPIKeyEntry `yaml:"upstream-api-keys,omitempty" json:"upstream-api-keys,omitempty"`
+	RestrictManagementToLocalhost bool                     `yaml:"restrict-management-to-localhost" json:"restrict-management-to-localhost"`
+	ModelMappings                 []AmpModelMapping        `yaml:"model-mappings" json:"model-mappings"`
+	ForceModelMappings            bool                     `yaml:"force-model-mappings" json:"force-model-mappings"`
 }
 
-// AmpUpstreamAPIKeyEntry maps a set of client API keys to a specific upstream API key.
-// When a request is authenticated with one of the APIKeys, the corresponding UpstreamAPIKey
-// is used for the upstream Amp request.
+// AmpUpstreamAPIKeyEntry 将一组客户端 API 密钥映射到指定的上游 API 密钥；请求若用其中任一密钥认证，则使用对应 UpstreamAPIKey 访问上游。
 type AmpUpstreamAPIKeyEntry struct {
-	// UpstreamAPIKey is the API key to use when proxying to the Amp upstream.
-	UpstreamAPIKey string `yaml:"upstream-api-key" json:"upstream-api-key"`
-
-	// APIKeys are the client API keys (from top-level api-keys) that map to this upstream key.
-	APIKeys []string `yaml:"api-keys" json:"api-keys"`
+	UpstreamAPIKey string   `yaml:"upstream-api-key" json:"upstream-api-key"`
+	APIKeys        []string `yaml:"api-keys" json:"api-keys"`
 }
 
-// PayloadConfig defines default and override parameter rules applied to provider payloads.
+// PayloadConfig 定义对提供方请求体应用的默认与覆盖规则。
 type PayloadConfig struct {
-	// Default defines rules that only set parameters when they are missing in the payload.
-	Default []PayloadRule `yaml:"default" json:"default"`
-	// DefaultRaw defines rules that set raw JSON values only when they are missing.
-	DefaultRaw []PayloadRule `yaml:"default-raw" json:"default-raw"`
-	// Override defines rules that always set parameters, overwriting any existing values.
-	Override []PayloadRule `yaml:"override" json:"override"`
-	// OverrideRaw defines rules that always set raw JSON values, overwriting any existing values.
-	OverrideRaw []PayloadRule `yaml:"override-raw" json:"override-raw"`
-	// Filter defines rules that remove parameters from the payload by JSON path.
-	Filter []PayloadFilterRule `yaml:"filter" json:"filter"`
+	Default     []PayloadRule       `yaml:"default" json:"default"`
+	DefaultRaw  []PayloadRule       `yaml:"default-raw" json:"default-raw"`
+	Override    []PayloadRule       `yaml:"override" json:"override"`
+	OverrideRaw []PayloadRule       `yaml:"override-raw" json:"override-raw"`
+	Filter      []PayloadFilterRule `yaml:"filter" json:"filter"`
 }
 
-// PayloadFilterRule describes a rule to remove specific JSON paths from matching model payloads.
+// PayloadFilterRule 描述从匹配模型的请求体中按 JSON 路径移除字段的规则。
 type PayloadFilterRule struct {
-	// Models lists model entries with name pattern and protocol constraint.
+	// Models 为带名称模式与协议约束的模型条目列表。
 	Models []PayloadModelRule `yaml:"models" json:"models"`
 	// Params lists JSON paths (gjson/sjson syntax) to remove from the payload.
 	Params []string `yaml:"params" json:"params"`
 }
 
-// PayloadRule describes a single rule targeting a list of models with parameter updates.
+// PayloadRule 描述针对一组模型的单条参数更新规则。
 type PayloadRule struct {
-	// Models lists model entries with name pattern and protocol constraint.
+	// Models 为带名称模式与协议约束的模型条目列表。
 	Models []PayloadModelRule `yaml:"models" json:"models"`
-	// Params maps JSON paths (gjson/sjson syntax) to values written into the payload.
-	// For *-raw rules, values are treated as raw JSON fragments (strings are used as-is).
+	// Params 为 JSON 路径（gjson/sjson 语法）到写入值的映射；*-raw 规则中值为原始 JSON 片段。
 	Params map[string]any `yaml:"params" json:"params"`
 }
 
-// PayloadModelRule ties a model name pattern to a specific translator protocol.
+// PayloadModelRule 将模型名或通配符模式与某一翻译协议绑定。
 type PayloadModelRule struct {
-	// Name is the model name or wildcard pattern (e.g., "gpt-*", "*-5", "gemini-*-pro").
-	Name string `yaml:"name" json:"name"`
-	// Protocol restricts the rule to a specific translator format (e.g., "gemini", "responses").
+	Name     string `yaml:"name" json:"name"`
 	Protocol string `yaml:"protocol" json:"protocol"`
 }
 
-// CloakConfig configures request cloaking for non-Claude-Code clients.
-// Cloaking disguises API requests to appear as originating from the official Claude Code CLI.
+// CloakConfig 为非 Claude Code 客户端配置请求伪装，使请求看起来来自官方 Claude Code CLI。
 type CloakConfig struct {
-	// Mode controls cloaking behavior: "auto" (default), "always", or "never".
-	// - "auto": cloak only when client is not Claude Code (based on User-Agent)
-	// - "always": always apply cloaking regardless of client
-	// - "never": never apply cloaking
+	// Mode: "auto"（默认）仅对非 Claude Code 客户端伪装；"always" 始终伪装；"never" 从不伪装。
 	Mode string `yaml:"mode,omitempty" json:"mode,omitempty"`
-
-	// StrictMode controls how system prompts are handled when cloaking.
-	// - false (default): prepend Claude Code prompt to user system messages
-	// - true: strip all user system messages, keep only Claude Code prompt
+	// StrictMode 为 false 时在用户 system 消息前追加 Claude Code 提示；为 true 时移除用户 system 消息，仅保留 Claude Code 提示。
 	StrictMode bool `yaml:"strict-mode,omitempty" json:"strict-mode,omitempty"`
-
-	// SensitiveWords is a list of words to obfuscate with zero-width characters.
-	// This can help bypass certain content filters.
+	// SensitiveWords 为需用零宽字符混淆的敏感词列表，可用于绕过部分内容过滤。
 	SensitiveWords []string `yaml:"sensitive-words,omitempty" json:"sensitive-words,omitempty"`
 }
 
-// ClaudeKey represents the configuration for a Claude API key,
-// including the API key itself and an optional base URL for the API endpoint.
+// ClaudeKey 为 Claude API 密钥配置，含密钥及可选的 API 端点 base URL。
 type ClaudeKey struct {
-	// APIKey is the authentication key for accessing Claude API services.
-	APIKey string `yaml:"api-key" json:"api-key"`
+	APIKey   string        `yaml:"api-key" json:"api-key"`
+	Priority int           `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Prefix   string        `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	BaseURL  string        `yaml:"base-url" json:"base-url"`
+	ProxyURL string        `yaml:"proxy-url" json:"proxy-url"`
+	Models   []ClaudeModel `yaml:"models" json:"models"`
 
-	// Priority controls selection preference when multiple credentials match.
-	// Higher values are preferred; defaults to 0.
-	Priority int `yaml:"priority,omitempty" json:"priority,omitempty"`
-
-	// Prefix optionally namespaces models for this credential (e.g., "teamA/claude-sonnet-4").
-	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
-
-	// BaseURL is the base URL for the Claude API endpoint.
-	// If empty, the default Claude API URL will be used.
-	BaseURL string `yaml:"base-url" json:"base-url"`
-
-	// ProxyURL overrides the global proxy setting for this API key if provided.
-	ProxyURL string `yaml:"proxy-url" json:"proxy-url"`
-
-	// Models defines upstream model names and aliases for request routing.
-	Models []ClaudeModel `yaml:"models" json:"models"`
-
-	// Headers optionally adds extra HTTP headers for requests sent with this key.
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
-
-	// ExcludedModels lists model IDs that should be excluded for this provider.
-	ExcludedModels []string `yaml:"excluded-models,omitempty" json:"excluded-models,omitempty"`
-
-	// Cloak configures request cloaking for non-Claude-Code clients.
-	Cloak *CloakConfig `yaml:"cloak,omitempty" json:"cloak,omitempty"`
+	Headers        map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	ExcludedModels []string          `yaml:"excluded-models,omitempty" json:"excluded-models,omitempty"`
+	Cloak          *CloakConfig      `yaml:"cloak,omitempty" json:"cloak,omitempty"`
 }
 
 func (k ClaudeKey) GetAPIKey() string  { return k.APIKey }
 func (k ClaudeKey) GetBaseURL() string { return k.BaseURL }
 
-// ClaudeModel describes a mapping between an alias and the actual upstream model name.
+// ClaudeModel 表示别名与上游模型名的映射。
 type ClaudeModel struct {
-	// Name is the upstream model identifier used when issuing requests.
-	Name string `yaml:"name" json:"name"`
-
-	// Alias is the client-facing model name that maps to Name.
+	Name  string `yaml:"name" json:"name"`
 	Alias string `yaml:"alias" json:"alias"`
 }
 
 func (m ClaudeModel) GetName() string  { return m.Name }
 func (m ClaudeModel) GetAlias() string { return m.Alias }
 
-// CodexKey represents the configuration for a Codex API key,
-// including the API key itself and an optional base URL for the API endpoint.
+// CodexKey 为 Codex API 密钥配置，含密钥及可选的 API 端点 base URL。
 type CodexKey struct {
-	// APIKey is the authentication key for accessing Codex API services.
-	APIKey string `yaml:"api-key" json:"api-key"`
-
-	// Priority controls selection preference when multiple credentials match.
-	// Higher values are preferred; defaults to 0.
-	Priority int `yaml:"priority,omitempty" json:"priority,omitempty"`
-
-	// Prefix optionally namespaces models for this credential (e.g., "teamA/gpt-5-codex").
-	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
-
-	// BaseURL is the base URL for the Codex API endpoint.
-	// If empty, the default Codex API URL will be used.
-	BaseURL string `yaml:"base-url" json:"base-url"`
-
-	// ProxyURL overrides the global proxy setting for this API key if provided.
-	ProxyURL string `yaml:"proxy-url" json:"proxy-url"`
-
-	// Models defines upstream model names and aliases for request routing.
-	Models []CodexModel `yaml:"models" json:"models"`
-
-	// Headers optionally adds extra HTTP headers for requests sent with this key.
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
-
-	// ExcludedModels lists model IDs that should be excluded for this provider.
-	ExcludedModels []string `yaml:"excluded-models,omitempty" json:"excluded-models,omitempty"`
+	APIKey         string            `yaml:"api-key" json:"api-key"`
+	Priority       int               `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Prefix         string            `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	BaseURL        string            `yaml:"base-url" json:"base-url"`
+	ProxyURL       string            `yaml:"proxy-url" json:"proxy-url"`
+	Models         []CodexModel      `yaml:"models" json:"models"`
+	Headers        map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	ExcludedModels []string          `yaml:"excluded-models,omitempty" json:"excluded-models,omitempty"`
 }
 
 func (k CodexKey) GetAPIKey() string  { return k.APIKey }
 func (k CodexKey) GetBaseURL() string { return k.BaseURL }
 
-// CodexModel describes a mapping between an alias and the actual upstream model name.
+// CodexModel 表示别名与上游模型名的映射。
 type CodexModel struct {
-	// Name is the upstream model identifier used when issuing requests.
-	Name string `yaml:"name" json:"name"`
-
-	// Alias is the client-facing model name that maps to Name.
+	Name  string `yaml:"name" json:"name"`
 	Alias string `yaml:"alias" json:"alias"`
 }
 
 func (m CodexModel) GetName() string  { return m.Name }
 func (m CodexModel) GetAlias() string { return m.Alias }
 
-// GeminiKey represents the configuration for a Gemini API key,
-// including optional overrides for upstream base URL, proxy routing, and headers.
+// GeminiKey 为 Gemini API 密钥配置，可覆盖上游 base URL、代理与请求头。
 type GeminiKey struct {
-	// APIKey is the authentication key for accessing Gemini API services.
-	APIKey string `yaml:"api-key" json:"api-key"`
-
-	// Priority controls selection preference when multiple credentials match.
-	// Higher values are preferred; defaults to 0.
-	Priority int `yaml:"priority,omitempty" json:"priority,omitempty"`
-
-	// Prefix optionally namespaces models for this credential (e.g., "teamA/gemini-3-pro-preview").
-	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
-
-	// BaseURL optionally overrides the Gemini API endpoint.
-	BaseURL string `yaml:"base-url,omitempty" json:"base-url,omitempty"`
-
-	// ProxyURL optionally overrides the global proxy for this API key.
-	ProxyURL string `yaml:"proxy-url,omitempty" json:"proxy-url,omitempty"`
-
-	// Models defines upstream model names and aliases for request routing.
-	Models []GeminiModel `yaml:"models,omitempty" json:"models,omitempty"`
-
-	// Headers optionally adds extra HTTP headers for requests sent with this key.
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
-
-	// ExcludedModels lists model IDs that should be excluded for this provider.
-	ExcludedModels []string `yaml:"excluded-models,omitempty" json:"excluded-models,omitempty"`
+	APIKey         string            `yaml:"api-key" json:"api-key"`
+	Priority       int               `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Prefix         string            `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	BaseURL        string            `yaml:"base-url,omitempty" json:"base-url,omitempty"`
+	ProxyURL       string            `yaml:"proxy-url,omitempty" json:"proxy-url,omitempty"`
+	Models         []GeminiModel     `yaml:"models,omitempty" json:"models,omitempty"`
+	Headers        map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	ExcludedModels []string          `yaml:"excluded-models,omitempty" json:"excluded-models,omitempty"`
 }
 
 func (k GeminiKey) GetAPIKey() string  { return k.APIKey }
 func (k GeminiKey) GetBaseURL() string { return k.BaseURL }
 
-// GeminiModel describes a mapping between an alias and the actual upstream model name.
+// GeminiModel 表示别名与上游模型名的映射。
 type GeminiModel struct {
-	// Name is the upstream model identifier used when issuing requests.
-	Name string `yaml:"name" json:"name"`
-
-	// Alias is the client-facing model name that maps to Name.
+	Name  string `yaml:"name" json:"name"`
 	Alias string `yaml:"alias" json:"alias"`
 }
 
 func (m GeminiModel) GetName() string  { return m.Name }
 func (m GeminiModel) GetAlias() string { return m.Alias }
 
-// OpenAICompatibility represents the configuration for OpenAI API compatibility
-// with external providers, allowing model aliases to be routed through OpenAI API format.
+// OpenAICompatibility 为对外部提供方的 OpenAI 兼容配置，模型别名按 OpenAI API 格式路由。
 type OpenAICompatibility struct {
-	// Name is the identifier for this OpenAI compatibility configuration.
-	Name string `yaml:"name" json:"name"`
-
-	// Priority controls selection preference when multiple providers or credentials match.
-	// Higher values are preferred; defaults to 0.
-	Priority int `yaml:"priority,omitempty" json:"priority,omitempty"`
-
-	// Prefix optionally namespaces model aliases for this provider (e.g., "teamA/kimi-k2").
-	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
-
-	// BaseURL is the base URL for the external OpenAI-compatible API endpoint.
-	BaseURL string `yaml:"base-url" json:"base-url"`
-
-	// AllowedUserAgentPrefix restricts this provider to requests whose User-Agent starts with this value.
-	// When set, only such requests will be routed to this provider (e.g. "claude-cli" for Claude Code only).
-	// Empty means no restriction.
-	AllowedUserAgentPrefix string `yaml:"allowed-user-agent-prefix,omitempty" json:"allowed-user-agent-prefix,omitempty"`
-
-	// APIKeyEntries defines API keys with optional per-key proxy configuration.
-	APIKeyEntries []OpenAICompatibilityAPIKey `yaml:"api-key-entries,omitempty" json:"api-key-entries,omitempty"`
-
-	// Models defines the model configurations including aliases for routing.
-	Models []OpenAICompatibilityModel `yaml:"models" json:"models"`
-
-	// Headers optionally adds extra HTTP headers for requests sent to this provider.
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	Name                   string                      `yaml:"name" json:"name"`
+	Priority               int                         `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Prefix                 string                      `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	BaseURL                string                      `yaml:"base-url" json:"base-url"`
+	AllowedUserAgentPrefix string                      `yaml:"allowed-user-agent-prefix,omitempty" json:"allowed-user-agent-prefix,omitempty"`
+	APIKeyEntries          []OpenAICompatibilityAPIKey `yaml:"api-key-entries,omitempty" json:"api-key-entries,omitempty"`
+	Models                 []OpenAICompatibilityModel  `yaml:"models" json:"models"`
+	Headers                map[string]string           `yaml:"headers,omitempty" json:"headers,omitempty"`
 }
 
-// OpenAICompatibilityAPIKey represents an API key configuration with optional proxy setting.
+// OpenAICompatibilityAPIKey 为单条 API 密钥配置，可含代理覆盖。
 type OpenAICompatibilityAPIKey struct {
-	// APIKey is the authentication key for accessing the external API services.
-	APIKey string `yaml:"api-key" json:"api-key"`
-
-	// ProxyURL overrides the global proxy setting for this API key if provided.
+	APIKey   string `yaml:"api-key" json:"api-key"`
 	ProxyURL string `yaml:"proxy-url,omitempty" json:"proxy-url,omitempty"`
 }
 
-// OpenAICompatibilityModel represents a model configuration for OpenAI compatibility,
-// including the actual model name and its alias for API routing.
+// OpenAICompatibilityModel 为 OpenAI 兼容下的模型配置，含上游模型名与客户端别名。
 type OpenAICompatibilityModel struct {
-	// Name is the actual model name used by the external provider.
-	Name string `yaml:"name" json:"name"`
-
-	// Alias is the model name alias that clients will use to reference this model.
+	Name  string `yaml:"name" json:"name"`
 	Alias string `yaml:"alias" json:"alias"`
 }
 
 func (m OpenAICompatibilityModel) GetName() string  { return m.Name }
 func (m OpenAICompatibilityModel) GetAlias() string { return m.Alias }
 
-// LoadConfig reads a YAML configuration file from the given path,
-// unmarshals it into a Config struct, applies environment variable overrides,
-// and returns it.
-//
-// Parameters:
-//   - configFile: The path to the YAML configuration file
-//
-// Returns:
-//   - *Config: The loaded configuration
-//   - error: An error if the configuration could not be loaded
+// LoadConfig 从给定路径读取 YAML 配置文件，反序列化为 Config，应用环境变量覆盖后返回。
 func LoadConfig(configFile string) (*Config, error) {
 	return LoadConfigOptional(configFile, false)
 }
 
-// LoadConfigOptional reads YAML from configFile.
-// If optional is true and the file is missing, it returns an empty Config.
-// If optional is true and the file is empty or invalid, it returns an empty Config.
+// LoadConfigOptional 从 configFile 读取 YAML。当 optional 为 true 且文件不存在、为空或无效时返回空 Config。
 func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
-	// NOTE: Startup oauth-model-alias migration is intentionally disabled.
-	// Reason: avoid mutating config.yaml during server startup.
-	// Re-enable the block below if automatic startup migration is needed again.
-	// if migrated, err := MigrateOAuthModelAlias(configFile); err != nil {
-	// 	// Log warning but don't fail - config loading should still work
-	// 	fmt.Printf("Warning: oauth-model-alias migration failed: %v\n", err)
-	// } else if migrated {
-	// 	fmt.Println("Migrated oauth-model-mappings to oauth-model-alias")
-	// }
-
-	// Read the entire configuration file into memory.
+	// 启动时 oauth-model-alias 迁移已 intentionally 关闭，避免在启动时修改 config.yaml。
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		if optional {
@@ -517,7 +328,7 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 				return &Config{}, nil
 			}
 		}
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("读取配置文件失败: %w", err)
 	}
 
 	// In cloud deploy mode (optional=true), if file is empty or contains only whitespace, return empty config.
@@ -543,7 +354,7 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 			// In cloud deploy mode, if YAML parsing fails, return empty config instead of error.
 			return &Config{}, nil
 		}
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		return nil, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
 	// NOTE: Startup legacy key migration is intentionally disabled.
@@ -567,7 +378,7 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 	if cfg.RemoteManagement.SecretKey != "" && !looksLikeBcrypt(cfg.RemoteManagement.SecretKey) {
 		hashed, errHash := hashSecret(cfg.RemoteManagement.SecretKey)
 		if errHash != nil {
-			return nil, fmt.Errorf("failed to hash remote management key: %w", errHash)
+			return nil, fmt.Errorf("对远程管理密钥做哈希失败: %w", errHash)
 		}
 		cfg.RemoteManagement.SecretKey = hashed
 
@@ -615,7 +426,7 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 	// Normalize global OAuth model name aliases.
 	cfg.SanitizeOAuthModelAlias()
 
-	// Validate raw payload rules and drop invalid entries.
+	// 校验 raw 类 payload 规则并丢弃非法条目。
 	cfg.SanitizePayloadRules()
 
 	// NOTE: Legacy migration persistence is intentionally disabled together with
@@ -637,7 +448,7 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 	return &cfg, nil
 }
 
-// SanitizePayloadRules validates raw JSON payload rule params and drops invalid rules.
+// SanitizePayloadRules 校验 raw JSON 类 payload 规则参数并丢弃非法规则。
 func (cfg *Config) SanitizePayloadRules() {
 	if cfg == nil {
 		return
@@ -668,7 +479,7 @@ func sanitizePayloadRawRules(rules []PayloadRule, section string) []PayloadRule 
 					"section":    section,
 					"rule_index": i + 1,
 					"param":      path,
-				}).Warn("payload rule dropped: invalid raw JSON")
+				}).Warn("payload 规则已丢弃：raw JSON 无效")
 				invalid = true
 				break
 			}
@@ -926,10 +737,10 @@ func SaveConfigPreserveComments(configFile string, cfg *Config) error {
 		return err
 	}
 	if original.Kind != yaml.DocumentNode || len(original.Content) == 0 {
-		return fmt.Errorf("invalid yaml document structure")
+		return fmt.Errorf("YAML 文档结构无效")
 	}
 	if original.Content[0] == nil || original.Content[0].Kind != yaml.MappingNode {
-		return fmt.Errorf("expected root mapping node")
+		return fmt.Errorf("期望根节点为 mapping")
 	}
 
 	// Marshal the current cfg to YAML, then unmarshal to a yaml.Node we can merge from.
@@ -942,10 +753,10 @@ func SaveConfigPreserveComments(configFile string, cfg *Config) error {
 		return err
 	}
 	if generated.Kind != yaml.DocumentNode || len(generated.Content) == 0 || generated.Content[0] == nil {
-		return fmt.Errorf("invalid generated yaml structure")
+		return fmt.Errorf("生成的 YAML 结构无效")
 	}
 	if generated.Content[0].Kind != yaml.MappingNode {
-		return fmt.Errorf("expected generated root mapping node")
+		return fmt.Errorf("期望生成的根节点为 mapping")
 	}
 
 	// Remove deprecated sections before merging back the sanitized config.
@@ -994,7 +805,7 @@ func SaveConfigPreserveCommentsUpdateNestedScalar(configFile string, path []stri
 		return err
 	}
 	if root.Kind != yaml.DocumentNode || len(root.Content) == 0 {
-		return fmt.Errorf("invalid yaml document structure")
+		return fmt.Errorf("YAML 文档结构无效")
 	}
 	node := root.Content[0]
 	// descend mapping nodes following path

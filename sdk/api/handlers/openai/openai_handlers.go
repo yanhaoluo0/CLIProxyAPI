@@ -1,9 +1,4 @@
-// Package openai provides HTTP handlers for OpenAI API endpoints.
-// This package implements the OpenAI-compatible API interface, including model listing
-// and chat completion functionality. It supports both streaming and non-streaming responses,
-// and manages a pool of clients to interact with backend services.
-// The handlers translate OpenAI API requests to the appropriate backend format and
-// convert responses back to OpenAI-compatible format.
+// Package openai 提供 OpenAI API 端点的 HTTP 处理器，实现 OpenAI 兼容 API 接口，包含模型列表与 chat completion 功能，支持流式与非流式响应，管理客户端池与后端服务交互，翻译请求/响应为 OpenAI 兼容格式。
 package openai
 
 import (
@@ -23,41 +18,31 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// OpenAIAPIHandler contains the handlers for OpenAI API endpoints.
-// It holds a pool of clients to interact with the backend service.
+// OpenAIAPIHandler 包含 OpenAI API 端点的处理器，持有与后端服务交互的客户端池。
 type OpenAIAPIHandler struct {
 	*handlers.BaseAPIHandler
 }
 
-// NewOpenAIAPIHandler creates a new OpenAI API handlers instance.
-// It takes an BaseAPIHandler instance as input and returns an OpenAIAPIHandler.
-//
-// Parameters:
-//   - apiHandlers: The base API handlers instance
-//
-// Returns:
-//   - *OpenAIAPIHandler: A new OpenAI API handlers instance
+// NewOpenAIAPIHandler 创建新的 OpenAI API 处理器实例，输入 BaseAPIHandler 实例并返回 OpenAIAPIHandler。
 func NewOpenAIAPIHandler(apiHandlers *handlers.BaseAPIHandler) *OpenAIAPIHandler {
 	return &OpenAIAPIHandler{
 		BaseAPIHandler: apiHandlers,
 	}
 }
 
-// HandlerType returns the identifier for this handler implementation.
+// HandlerType 返回此处理器实现的标识符。
 func (h *OpenAIAPIHandler) HandlerType() string {
 	return OpenAI
 }
 
-// Models returns the OpenAI-compatible model metadata supported by this handler.
+// Models 返回此处理器支持的 OpenAI 兼容模型元数据。
 func (h *OpenAIAPIHandler) Models() []map[string]any {
 	// Get dynamic models from the global registry
 	modelRegistry := registry.GetGlobalRegistry()
 	return modelRegistry.GetAvailableModels("openai")
 }
 
-// OpenAIModels handles the /v1/models endpoint.
-// It returns a list of available AI models with their capabilities
-// and specifications in OpenAI-compatible format.
+// OpenAIModels 处理 /v1/models 端点，以 OpenAI 兼容格式返回可用 AI 模型列表及其能力与规格。
 func (h *OpenAIAPIHandler) OpenAIModels(c *gin.Context) {
 	// Get all available models
 	allModels := h.Models()
@@ -89,7 +74,7 @@ func (h *OpenAIAPIHandler) OpenAIModels(c *gin.Context) {
 	})
 }
 
-// ChatCompletions handles the /v1/chat/completions endpoint.
+// ChatCompletions 处理 /v1/chat/completions 端点。
 // It determines whether the request is for a streaming or non-streaming response
 // and calls the appropriate handler based on the model provider.
 //

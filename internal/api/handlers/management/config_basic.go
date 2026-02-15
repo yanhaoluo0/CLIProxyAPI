@@ -36,7 +36,7 @@ type releaseInfo struct {
 	Name    string `json:"name"`
 }
 
-// GetLatestVersion returns the latest release version from GitHub without downloading assets.
+// GetLatestVersion 从 GitHub 获取最新发布版本号，不下载资源。
 func (h *Handler) GetLatestVersion(c *gin.Context) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	proxyURL := ""
@@ -63,7 +63,7 @@ func (h *Handler) GetLatestVersion(c *gin.Context) {
 	}
 	defer func() {
 		if errClose := resp.Body.Close(); errClose != nil {
-			log.WithError(errClose).Debug("failed to close latest version response body")
+			log.WithError(errClose).Debug("关闭最新版本响应体失败")
 		}
 	}()
 
@@ -162,8 +162,7 @@ func (h *Handler) PutConfigYAML(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "changed": []string{"config"}})
 }
 
-// GetConfigYAML returns the raw config.yaml file bytes without re-encoding.
-// It preserves comments and original formatting/styles.
+// GetConfigYAML 返回原始 config.yaml 字节，不重新编码，保留注释与格式。
 func (h *Handler) GetConfigYAML(c *gin.Context) {
 	data, err := os.ReadFile(h.configFilePath)
 	if err != nil {
@@ -181,11 +180,9 @@ func (h *Handler) GetConfigYAML(c *gin.Context) {
 	_, _ = c.Writer.Write(data)
 }
 
-// Debug
 func (h *Handler) GetDebug(c *gin.Context) { c.JSON(200, gin.H{"debug": h.cfg.Debug}) }
 func (h *Handler) PutDebug(c *gin.Context) { h.updateBoolField(c, func(v bool) { h.cfg.Debug = v }) }
 
-// UsageStatisticsEnabled
 func (h *Handler) GetUsageStatisticsEnabled(c *gin.Context) {
 	c.JSON(200, gin.H{"usage-statistics-enabled": h.cfg.UsageStatisticsEnabled})
 }
@@ -193,7 +190,6 @@ func (h *Handler) PutUsageStatisticsEnabled(c *gin.Context) {
 	h.updateBoolField(c, func(v bool) { h.cfg.UsageStatisticsEnabled = v })
 }
 
-// UsageStatisticsEnabled
 func (h *Handler) GetLoggingToFile(c *gin.Context) {
 	c.JSON(200, gin.H{"logging-to-file": h.cfg.LoggingToFile})
 }
@@ -201,7 +197,6 @@ func (h *Handler) PutLoggingToFile(c *gin.Context) {
 	h.updateBoolField(c, func(v bool) { h.cfg.LoggingToFile = v })
 }
 
-// LogsMaxTotalSizeMB
 func (h *Handler) GetLogsMaxTotalSizeMB(c *gin.Context) {
 	c.JSON(200, gin.H{"logs-max-total-size-mb": h.cfg.LogsMaxTotalSizeMB})
 }
@@ -221,7 +216,6 @@ func (h *Handler) PutLogsMaxTotalSizeMB(c *gin.Context) {
 	h.persist(c)
 }
 
-// ErrorLogsMaxFiles
 func (h *Handler) GetErrorLogsMaxFiles(c *gin.Context) {
 	c.JSON(200, gin.H{"error-logs-max-files": h.cfg.ErrorLogsMaxFiles})
 }
@@ -241,13 +235,11 @@ func (h *Handler) PutErrorLogsMaxFiles(c *gin.Context) {
 	h.persist(c)
 }
 
-// Request log
 func (h *Handler) GetRequestLog(c *gin.Context) { c.JSON(200, gin.H{"request-log": h.cfg.RequestLog}) }
 func (h *Handler) PutRequestLog(c *gin.Context) {
 	h.updateBoolField(c, func(v bool) { h.cfg.RequestLog = v })
 }
 
-// Websocket auth
 func (h *Handler) GetWebsocketAuth(c *gin.Context) {
 	c.JSON(200, gin.H{"ws-auth": h.cfg.WebsocketAuth})
 }
@@ -255,7 +247,6 @@ func (h *Handler) PutWebsocketAuth(c *gin.Context) {
 	h.updateBoolField(c, func(v bool) { h.cfg.WebsocketAuth = v })
 }
 
-// Request retry
 func (h *Handler) GetRequestRetry(c *gin.Context) {
 	c.JSON(200, gin.H{"request-retry": h.cfg.RequestRetry})
 }
@@ -263,7 +254,6 @@ func (h *Handler) PutRequestRetry(c *gin.Context) {
 	h.updateIntField(c, func(v int) { h.cfg.RequestRetry = v })
 }
 
-// Max retry interval
 func (h *Handler) GetMaxRetryInterval(c *gin.Context) {
 	c.JSON(200, gin.H{"max-retry-interval": h.cfg.MaxRetryInterval})
 }
@@ -271,7 +261,6 @@ func (h *Handler) PutMaxRetryInterval(c *gin.Context) {
 	h.updateIntField(c, func(v int) { h.cfg.MaxRetryInterval = v })
 }
 
-// ForceModelPrefix
 func (h *Handler) GetForceModelPrefix(c *gin.Context) {
 	c.JSON(200, gin.H{"force-model-prefix": h.cfg.ForceModelPrefix})
 }
@@ -291,7 +280,6 @@ func normalizeRoutingStrategy(strategy string) (string, bool) {
 	}
 }
 
-// RoutingStrategy
 func (h *Handler) GetRoutingStrategy(c *gin.Context) {
 	strategy, ok := normalizeRoutingStrategy(h.cfg.Routing.Strategy)
 	if !ok {
@@ -317,7 +305,6 @@ func (h *Handler) PutRoutingStrategy(c *gin.Context) {
 	h.persist(c)
 }
 
-// Proxy URL
 func (h *Handler) GetProxyURL(c *gin.Context) { c.JSON(200, gin.H{"proxy-url": h.cfg.ProxyURL}) }
 func (h *Handler) PutProxyURL(c *gin.Context) {
 	h.updateStringField(c, func(v string) { h.cfg.ProxyURL = v })

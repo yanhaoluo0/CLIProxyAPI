@@ -27,8 +27,7 @@ const (
 	qwenClientMetadataValue = "ideType=IDE_UNSPECIFIED,platform=PLATFORM_UNSPECIFIED,pluginType=GEMINI"
 )
 
-// QwenExecutor is a stateless executor for Qwen Code using OpenAI-compatible chat completions.
-// If access token is unavailable, it falls back to legacy via ClientAdapter.
+// QwenExecutor 为使用 OpenAI 兼容 chat completions 的 Qwen Code 实现无状态执行器；无 access token 时通过 ClientAdapter 回退。
 type QwenExecutor struct {
 	cfg *config.Config
 }
@@ -37,7 +36,7 @@ func NewQwenExecutor(cfg *config.Config) *QwenExecutor { return &QwenExecutor{cf
 
 func (e *QwenExecutor) Identifier() string { return "qwen" }
 
-// PrepareRequest injects Qwen credentials into the outgoing HTTP request.
+// PrepareRequest 将 Qwen 凭证注入出站 HTTP 请求。
 func (e *QwenExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -49,10 +48,10 @@ func (e *QwenExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth
 	return nil
 }
 
-// HttpRequest injects Qwen credentials into the request and executes it.
+// HttpRequest 将 Qwen 凭证注入请求并执行。
 func (e *QwenExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("qwen executor: request is nil")
+		return nil, fmt.Errorf("qwen 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -130,7 +129,7 @@ func (e *QwenExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("qwen executor: close response body error: %v", errClose)
+			log.Errorf("qwen 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -232,7 +231,7 @@ func (e *QwenExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Aut
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("qwen executor: close response body error: %v", errClose)
+			log.Errorf("qwen 执行器: 关闭响应体错误: %v", errClose)
 		}
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return nil, err
@@ -243,7 +242,7 @@ func (e *QwenExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Aut
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("qwen executor: close response body error: %v", errClose)
+				log.Errorf("qwen 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -287,12 +286,12 @@ func (e *QwenExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth,
 
 	enc, err := tokenizerForModel(modelName)
 	if err != nil {
-		return cliproxyexecutor.Response{}, fmt.Errorf("qwen executor: tokenizer init failed: %w", err)
+		return cliproxyexecutor.Response{}, fmt.Errorf("qwen 执行器: 分词器初始化失败: %w", err)
 	}
 
 	count, err := countOpenAIChatTokens(enc, body)
 	if err != nil {
-		return cliproxyexecutor.Response{}, fmt.Errorf("qwen executor: token counting failed: %w", err)
+		return cliproxyexecutor.Response{}, fmt.Errorf("qwen 执行器: 计 token 失败: %w", err)
 	}
 
 	usageJSON := buildOpenAIUsageJSON(count)
@@ -301,9 +300,9 @@ func (e *QwenExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth,
 }
 
 func (e *QwenExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
-	log.Debugf("qwen executor: refresh called")
+	log.Debugf("qwen 执行器: 已调用 refresh")
 	if auth == nil {
-		return nil, fmt.Errorf("qwen executor: auth is nil")
+		return nil, fmt.Errorf("qwen 执行器: auth 为 nil")
 	}
 	// Expect refresh_token in metadata for OAuth-based accounts
 	var refreshToken string

@@ -1,5 +1,4 @@
-// Package management provides the management API handlers and middleware
-// for configuring the server and managing auth files.
+// Package management 提供管理 API 的处理器与中间件，用于配置服务端与管理认证文件。
 package management
 
 import (
@@ -24,16 +23,13 @@ import (
 type attemptInfo struct {
 	count        int
 	blockedUntil time.Time
-	lastActivity time.Time // track last activity for cleanup
+	lastActivity time.Time
 }
 
-// attemptCleanupInterval controls how often stale IP entries are purged
 const attemptCleanupInterval = 1 * time.Hour
-
-// attemptMaxIdleTime controls how long an IP can be idle before cleanup
 const attemptMaxIdleTime = 2 * time.Hour
 
-// Handler aggregates config reference, persistence path and helpers.
+// Handler 聚合配置引用、持久化路径与辅助方法。
 type Handler struct {
 	cfg                 *config.Config
 	configFilePath      string
@@ -49,7 +45,7 @@ type Handler struct {
 	logDir              string
 }
 
-// NewHandler creates a new management handler instance.
+// NewHandler 创建新的管理处理器实例。
 func NewHandler(cfg *config.Config, configFilePath string, manager *coreauth.Manager) *Handler {
 	envSecret, _ := os.LookupEnv("MANAGEMENT_PASSWORD")
 	envSecret = strings.TrimSpace(envSecret)
@@ -68,8 +64,7 @@ func NewHandler(cfg *config.Config, configFilePath string, manager *coreauth.Man
 	return h
 }
 
-// startAttemptCleanup launches a background goroutine that periodically
-// removes stale IP entries from failedAttempts to prevent memory leaks.
+// startAttemptCleanup 启动后台 goroutine，定期清理失败尝试中的过期 IP 条目以防内存泄漏。
 func (h *Handler) startAttemptCleanup() {
 	go func() {
 		ticker := time.NewTicker(attemptCleanupInterval)
@@ -80,42 +75,39 @@ func (h *Handler) startAttemptCleanup() {
 	}()
 }
 
-// purgeStaleAttempts removes IP entries that have been idle beyond attemptMaxIdleTime
-// and whose ban (if any) has expired.
+// purgeStaleAttempts 移除空闲超过 attemptMaxIdleTime 且封禁已过期的 IP 条目。
 func (h *Handler) purgeStaleAttempts() {
 	now := time.Now()
 	h.attemptsMu.Lock()
 	defer h.attemptsMu.Unlock()
 	for ip, ai := range h.failedAttempts {
-		// Skip if still banned
 		if !ai.blockedUntil.IsZero() && now.Before(ai.blockedUntil) {
 			continue
 		}
-		// Remove if idle too long
 		if now.Sub(ai.lastActivity) > attemptMaxIdleTime {
 			delete(h.failedAttempts, ip)
 		}
 	}
 }
 
-// NewHandler creates a new management handler instance.
+// NewHandlerWithoutConfigFilePath 创建不绑定配置文件路径的管理处理器实例。
 func NewHandlerWithoutConfigFilePath(cfg *config.Config, manager *coreauth.Manager) *Handler {
 	return NewHandler(cfg, "", manager)
 }
 
-// SetConfig updates the in-memory config reference when the server hot-reloads.
+// SetConfig 在服务热重载时更新内存中的配置引用。
 func (h *Handler) SetConfig(cfg *config.Config) { h.cfg = cfg }
 
-// SetAuthManager updates the auth manager reference used by management endpoints.
+// SetAuthManager 更新管理端点使用的认证管理器引用。
 func (h *Handler) SetAuthManager(manager *coreauth.Manager) { h.authManager = manager }
 
-// SetUsageStatistics allows replacing the usage statistics reference.
+// SetUsageStatistics 替换用量统计引用。
 func (h *Handler) SetUsageStatistics(stats *usage.RequestStatistics) { h.usageStats = stats }
 
-// SetLocalPassword configures the runtime-local password accepted for localhost requests.
+// SetLocalPassword 设置本机请求接受的运行时本地密码。
 func (h *Handler) SetLocalPassword(password string) { h.localPassword = password }
 
-// SetLogDirectory updates the directory where main.log should be looked up.
+// SetLogDirectory 设置查找 main.log 的目录。
 func (h *Handler) SetLogDirectory(dir string) {
 	if dir == "" {
 		return
@@ -128,9 +120,7 @@ func (h *Handler) SetLogDirectory(dir string) {
 	h.logDir = dir
 }
 
-// Middleware enforces access control for management endpoints.
-// All requests (local and remote) require a valid management key.
-// Additionally, remote access requires allow-remote-management=true.
+// Middleware 为管理端点做访问控制：本地与远程均需有效管理密钥，远程还要求 allow-remote-management=true。
 func (h *Handler) Middleware() gin.HandlerFunc {
 	const maxFailures = 5
 	const banDuration = 30 * time.Minute
@@ -165,7 +155,7 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 					if time.Now().Before(ai.blockedUntil) {
 						remaining := time.Until(ai.blockedUntil).Round(time.Second)
 						h.attemptsMu.Unlock()
-						c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("IP banned due to too many failed attempts. Try again in %s", remaining)})
+						c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("IP 因多次失败已被封禁，请 %s 后再试", remaining)})
 						return
 					}
 					// Ban expired, reset state
@@ -176,7 +166,7 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 			h.attemptsMu.Unlock()
 
 			if !allowRemote {
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "remote management disabled"})
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "远程管理已禁用"})
 				return
 			}
 
@@ -197,7 +187,7 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 			}
 		}
 		if secretHash == "" && envSecret == "" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "remote management key not set"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "未设置远程管理密钥"})
 			return
 		}
 
@@ -219,7 +209,7 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 			if !localClient {
 				fail()
 			}
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing management key"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "缺少管理密钥"})
 			return
 		}
 
@@ -249,7 +239,7 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 			if !localClient {
 				fail()
 			}
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid management key"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "管理密钥无效"})
 			return
 		}
 
@@ -266,20 +256,18 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 	}
 }
 
-// persist saves the current in-memory config to disk.
+// persist 将当前内存配置写入磁盘。
 func (h *Handler) persist(c *gin.Context) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	// Preserve comments when writing
 	if err := config.SaveConfigPreserveComments(h.configFilePath, h.cfg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to save config: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("保存配置失败: %v", err)})
 		return false
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	return true
 }
 
-// Helper methods for simple types
 func (h *Handler) updateBoolField(c *gin.Context, set func(bool)) {
 	var body struct {
 		Value *bool `json:"value"`

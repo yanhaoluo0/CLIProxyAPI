@@ -1,6 +1,5 @@
-// Package cliproxy provides the core service implementation for the CLI Proxy API.
-// It includes service lifecycle management, authentication handling, file watching,
-// and integration with various AI service providers through a unified interface.
+// Package cliproxy 提供 CLI Proxy API 的核心服务实现，包含生命周期管理、认证处理、文件监听，
+// 以及通过统一接口与各种 AI 服务提供方的集成。
 package cliproxy
 
 import (
@@ -15,9 +14,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v6/sdk/config"
 )
 
-// Builder constructs a Service instance with customizable providers.
-// It provides a fluent interface for configuring all aspects of the service
-// including authentication, file watching, HTTP server options, and lifecycle hooks.
+// Builder 使用可自定义的提供方构造 Service 实例，提供流畅接口配置服务各方面（认证、文件监听、HTTP 服务器选项、生命周期钩子）。
 type Builder struct {
 	// cfg holds the application configuration.
 	cfg *config.Config
@@ -50,9 +47,7 @@ type Builder struct {
 	serverOptions []api.ServerOption
 }
 
-// Hooks allows callers to plug into service lifecycle stages.
-// These callbacks provide opportunities to perform custom initialization
-// and cleanup operations during service startup and shutdown.
+// Hooks 允许调用方插入服务生命周期阶段，这些回调在服务启动与关闭期间执行自定义初始化与清理操作。
 type Hooks struct {
 	// OnBeforeStart is called before the service starts, allowing configuration
 	// modifications or additional setup.
@@ -63,88 +58,72 @@ type Hooks struct {
 	OnAfterStart func(*Service)
 }
 
-// NewBuilder creates a Builder with default dependencies left unset.
-// Use the fluent interface methods to configure the service before calling Build().
-//
-// Returns:
-//   - *Builder: A new builder instance ready for configuration
+// NewBuilder 创建默认依赖为空的 Builder，调用 Build() 前使用流畅接口配置服务。
 func NewBuilder() *Builder {
 	return &Builder{}
 }
 
-// WithConfig sets the configuration instance used by the service.
-//
-// Parameters:
-//   - cfg: The application configuration
-//
-// Returns:
-//   - *Builder: The builder instance for method chaining
+// WithConfig 设置服务使用的配置实例。
 func (b *Builder) WithConfig(cfg *config.Config) *Builder {
 	b.cfg = cfg
 	return b
 }
 
-// WithConfigPath sets the absolute configuration file path used for reload watching.
-//
-// Parameters:
-//   - path: The absolute path to the configuration file
-//
-// Returns:
-//   - *Builder: The builder instance for method chaining
+// WithConfigPath 设置用于reload监听的文件路径。
 func (b *Builder) WithConfigPath(path string) *Builder {
 	b.configPath = path
 	return b
 }
 
-// WithTokenClientProvider overrides the provider responsible for token-backed clients.
+// WithTokenClientProvider 覆盖负责令牌客户端的提供方。
 func (b *Builder) WithTokenClientProvider(provider TokenClientProvider) *Builder {
 	b.tokenProvider = provider
 	return b
 }
 
-// WithAPIKeyClientProvider overrides the provider responsible for API key-backed clients.
+// WithAPIKeyClientProvider 覆盖负责 API key 客户端的提供方。
 func (b *Builder) WithAPIKeyClientProvider(provider APIKeyClientProvider) *Builder {
 	b.apiKeyProvider = provider
 	return b
 }
 
-// WithWatcherFactory allows customizing the watcher factory that handles reloads.
+// WithWatcherFactory 允许自定义处理 reload 的监听器工厂。
 func (b *Builder) WithWatcherFactory(factory WatcherFactory) *Builder {
 	b.watcherFactory = factory
 	return b
 }
 
-// WithHooks registers lifecycle hooks executed around service startup.
+// WithHooks 注册在服务启动周围执行的生命周期钩子。
 func (b *Builder) WithHooks(h Hooks) *Builder {
 	b.hooks = h
 	return b
 }
 
-// WithAuthManager overrides the authentication manager used for token lifecycle operations.
+// WithAuthManager 覆盖用于令牌生命周期操作的认证管理器。
 func (b *Builder) WithAuthManager(mgr *sdkAuth.Manager) *Builder {
 	b.authManager = mgr
 	return b
 }
 
-// WithRequestAccessManager overrides the request authentication manager.
+// WithRequestAccessManager 覆盖请求认证管理器。
 func (b *Builder) WithRequestAccessManager(mgr *sdkaccess.Manager) *Builder {
 	b.accessManager = mgr
 	return b
 }
 
-// WithCoreAuthManager overrides the runtime auth manager responsible for request execution.
+// WithCoreAuthManager 覆盖负责请求执行的运行时认证管理器。
 func (b *Builder) WithCoreAuthManager(mgr *coreauth.Manager) *Builder {
 	b.coreManager = mgr
 	return b
 }
 
-// WithServerOptions appends server configuration options used during construction.
+// WithServerOptions 追加构造期间使用的服务器配置选项。
 func (b *Builder) WithServerOptions(opts ...api.ServerOption) *Builder {
 	b.serverOptions = append(b.serverOptions, opts...)
 	return b
 }
 
-// WithLocalManagementPassword configures a password that is only accepted from localhost management requests.
+// WithLocalManagementPassword 配置仅从本机管理请求接受的密码。
 func (b *Builder) WithLocalManagementPassword(password string) *Builder {
 	if password == "" {
 		return b
@@ -153,13 +132,13 @@ func (b *Builder) WithLocalManagementPassword(password string) *Builder {
 	return b
 }
 
-// Build validates inputs, applies defaults, and returns a ready-to-run service.
+// Build 验证输入、应用默认值，返回可运行的服务。
 func (b *Builder) Build() (*Service, error) {
 	if b.cfg == nil {
-		return nil, fmt.Errorf("cliproxy: configuration is required")
+		return nil, fmt.Errorf("cliproxy: 必须提供配置")
 	}
 	if b.configPath == "" {
-		return nil, fmt.Errorf("cliproxy: configuration path is required")
+		return nil, fmt.Errorf("cliproxy: 必须提供配置路径")
 	}
 
 	tokenProvider := b.tokenProvider

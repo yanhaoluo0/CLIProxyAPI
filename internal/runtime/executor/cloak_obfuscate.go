@@ -10,16 +10,15 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// zeroWidthSpace is the Unicode zero-width space character used for obfuscation.
+// zeroWidthSpace 用于混淆的 Unicode 零宽空格字符。
 const zeroWidthSpace = "\u200B"
 
-// SensitiveWordMatcher holds the compiled regex for matching sensitive words.
+// SensitiveWordMatcher 保存用于匹配敏感词的编译后正则。
 type SensitiveWordMatcher struct {
 	regex *regexp.Regexp
 }
 
-// buildSensitiveWordMatcher compiles a regex from the word list.
-// Words are sorted by length (longest first) for proper matching.
+// buildSensitiveWordMatcher 从词表编译正则，按长度降序排列以确保正确匹配。
 func buildSensitiveWordMatcher(words []string) *SensitiveWordMatcher {
 	if len(words) == 0 {
 		return nil
@@ -58,7 +57,7 @@ func buildSensitiveWordMatcher(words []string) *SensitiveWordMatcher {
 	return &SensitiveWordMatcher{regex: re}
 }
 
-// obfuscateWord inserts a zero-width space after the first grapheme.
+// obfuscateWord 在第一个字形后插入零宽空格。
 func obfuscateWord(word string) string {
 	if strings.Contains(word, zeroWidthSpace) {
 		return word
@@ -73,7 +72,7 @@ func obfuscateWord(word string) string {
 	return string(r) + zeroWidthSpace + word[size:]
 }
 
-// obfuscateText replaces all sensitive words in the text.
+// obfuscateText 替换文本中所有敏感词。
 func (m *SensitiveWordMatcher) obfuscateText(text string) string {
 	if m == nil || m.regex == nil {
 		return text
@@ -81,8 +80,7 @@ func (m *SensitiveWordMatcher) obfuscateText(text string) string {
 	return m.regex.ReplaceAllStringFunc(text, obfuscateWord)
 }
 
-// obfuscateSensitiveWords processes the payload and obfuscates sensitive words
-// in system blocks and message content.
+// obfuscateSensitiveWords 处理 payload 并混淆系统块与消息内容中的敏感词。
 func obfuscateSensitiveWords(payload []byte, matcher *SensitiveWordMatcher) []byte {
 	if matcher == nil || matcher.regex == nil {
 		return payload
@@ -97,7 +95,7 @@ func obfuscateSensitiveWords(payload []byte, matcher *SensitiveWordMatcher) []by
 	return payload
 }
 
-// obfuscateSystemBlocks obfuscates sensitive words in system blocks.
+// obfuscateSystemBlocks 混淆系统块中的敏感词。
 func obfuscateSystemBlocks(payload []byte, matcher *SensitiveWordMatcher) []byte {
 	system := gjson.GetBytes(payload, "system")
 	if !system.Exists() {
@@ -132,7 +130,7 @@ func obfuscateSystemBlocks(payload []byte, matcher *SensitiveWordMatcher) []byte
 	return payload
 }
 
-// obfuscateMessages obfuscates sensitive words in message content.
+// obfuscateMessages 混淆消息内容中的敏感词。
 func obfuscateMessages(payload []byte, matcher *SensitiveWordMatcher) []byte {
 	messages := gjson.GetBytes(payload, "messages")
 	if !messages.Exists() || !messages.IsArray() {

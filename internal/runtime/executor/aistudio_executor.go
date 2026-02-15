@@ -1,6 +1,4 @@
-// Package executor provides runtime execution capabilities for various AI service providers.
-// This file implements the AI Studio executor that routes requests through a websocket-backed
-// transport for the AI Studio provider.
+// Package executor 为多种 AI 服务提供运行时执行能力，本文件实现通过 WebSocket 传输将请求路由到 AI Studio 提供方的 AI Studio 执行器。
 package executor
 
 import (
@@ -23,51 +21,43 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// AIStudioExecutor routes AI Studio requests through a websocket-backed transport.
+// AIStudioExecutor 通过 WebSocket 传输路由 AI Studio 请求。
 type AIStudioExecutor struct {
 	provider string
 	relay    *wsrelay.Manager
 	cfg      *config.Config
 }
 
-// NewAIStudioExecutor creates a new AI Studio executor instance.
-//
-// Parameters:
-//   - cfg: The application configuration
-//   - provider: The provider name
-//   - relay: The websocket relay manager
-//
-// Returns:
-//   - *AIStudioExecutor: A new AI Studio executor instance
+// NewAIStudioExecutor 创建新的 AI Studio 执行器实例。
 func NewAIStudioExecutor(cfg *config.Config, provider string, relay *wsrelay.Manager) *AIStudioExecutor {
 	return &AIStudioExecutor{provider: strings.ToLower(provider), relay: relay, cfg: cfg}
 }
 
-// Identifier returns the executor identifier.
+// Identifier 返回执行器标识。
 func (e *AIStudioExecutor) Identifier() string { return "aistudio" }
 
-// PrepareRequest prepares the HTTP request for execution (no-op for AI Studio).
+// PrepareRequest 为执行准备 HTTP 请求（对 AI Studio 为 no-op）。
 func (e *AIStudioExecutor) PrepareRequest(_ *http.Request, _ *cliproxyauth.Auth) error {
 	return nil
 }
 
-// HttpRequest forwards an arbitrary HTTP request through the websocket relay.
+// HttpRequest 通过 WebSocket relay 转发任意 HTTP 请求。
 func (e *AIStudioExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("aistudio executor: request is nil")
+		return nil, fmt.Errorf("aistudio 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
 	}
 	if e.relay == nil {
-		return nil, fmt.Errorf("aistudio executor: ws relay is nil")
+		return nil, fmt.Errorf("aistudio 执行器: ws relay 为 nil")
 	}
 	if auth == nil || auth.ID == "" {
-		return nil, fmt.Errorf("aistudio executor: missing auth")
+		return nil, fmt.Errorf("aistudio 执行器: 缺少 auth")
 	}
 	httpReq := req.WithContext(ctx)
 	if httpReq.URL == nil || strings.TrimSpace(httpReq.URL.String()) == "" {
-		return nil, fmt.Errorf("aistudio executor: request URL is empty")
+		return nil, fmt.Errorf("aistudio 执行器: 请求 URL 为空")
 	}
 
 	var body []byte
@@ -91,7 +81,7 @@ func (e *AIStudioExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.A
 		return nil, errRelay
 	}
 	if wsResp == nil {
-		return nil, fmt.Errorf("aistudio executor: ws response is nil")
+		return nil, fmt.Errorf("aistudio 执行器: ws 响应为 nil")
 	}
 
 	statusText := http.StatusText(wsResp.Status)
@@ -109,7 +99,7 @@ func (e *AIStudioExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.A
 	return resp, nil
 }
 
-// Execute performs a non-streaming request to the AI Studio API.
+// Execute 对 AI Studio API 执行非流式请求。
 func (e *AIStudioExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	if opts.Alt == "responses/compact" {
 		return resp, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -168,7 +158,7 @@ func (e *AIStudioExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth,
 	return resp, nil
 }
 
-// ExecuteStream performs a streaming request to the AI Studio API.
+// ExecuteStream 对 AI Studio API 执行流式请求。
 func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	if opts.Alt == "responses/compact" {
 		return nil, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -213,7 +203,7 @@ func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth
 	}
 	firstEvent, ok := <-wsStream
 	if !ok {
-		err = fmt.Errorf("wsrelay: stream closed before start")
+		err = fmt.Errorf("wsrelay: 流在开始前关闭")
 		recordAPIResponseError(ctx, e.cfg, err)
 		return nil, err
 	}
@@ -321,7 +311,7 @@ func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth
 	return stream, nil
 }
 
-// CountTokens counts tokens for the given request using the AI Studio API.
+// CountTokens 使用 AI Studio API 为给定请求计 token 数。
 func (e *AIStudioExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 	_, body, err := e.translateRequest(req, opts, false)
@@ -371,13 +361,13 @@ func (e *AIStudioExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.A
 	}
 	totalTokens := gjson.GetBytes(resp.Body, "totalTokens").Int()
 	if totalTokens <= 0 {
-		return cliproxyexecutor.Response{}, fmt.Errorf("wsrelay: totalTokens missing in response")
+		return cliproxyexecutor.Response{}, fmt.Errorf("wsrelay: 响应中缺少 totalTokens")
 	}
 	translated := sdktranslator.TranslateTokenCount(ctx, body.toFormat, opts.SourceFormat, totalTokens, resp.Body)
 	return cliproxyexecutor.Response{Payload: []byte(translated)}, nil
 }
 
-// Refresh refreshes the authentication credentials (no-op for AI Studio).
+// Refresh 刷新认证凭证（对 AI Studio 为 no-op）。
 func (e *AIStudioExecutor) Refresh(_ context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
 	return auth, nil
 }
@@ -438,8 +428,7 @@ func (e *AIStudioExecutor) buildEndpoint(model, action, alt string) string {
 	return base
 }
 
-// ensureColonSpacedJSON normalizes JSON objects so that colons are followed by a single space while
-// keeping the payload otherwise compact. Non-JSON inputs are returned unchanged.
+// ensureColonSpacedJSON 规范化 JSON 对象，使冒号后跟单个空格，同时保持其他紧凑；非 JSON 输入原样返回。
 func ensureColonSpacedJSON(payload []byte) []byte {
 	trimmed := bytes.TrimSpace(payload)
 	if len(trimmed) == 0 {

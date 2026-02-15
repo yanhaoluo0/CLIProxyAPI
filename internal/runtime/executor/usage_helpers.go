@@ -87,10 +87,7 @@ func (r *usageReporter) publishWithOutcome(ctx context.Context, detail usage.Det
 	})
 }
 
-// ensurePublished guarantees that a usage record is emitted exactly once.
-// It is safe to call multiple times; only the first call wins due to once.Do.
-// This is used to ensure request counting even when upstream responses do not
-// include any usage fields (tokens), especially for streaming paths.
+// ensurePublished 保证用量记录只上报一次；可多次调用，仅首次生效（once.Do），用于在上游无 usage 字段时仍统计请求（尤其流式）。
 func (r *usageReporter) ensurePublished(ctx context.Context) {
 	if r == nil {
 		return
@@ -399,9 +396,7 @@ func rememberStopWithoutUsage(traceID string) {
 	time.AfterFunc(10*time.Minute, func() { stopChunkWithoutUsage.Delete(traceID) })
 }
 
-// FilterSSEUsageMetadata removes usageMetadata from SSE events that are not
-// terminal (finishReason != "stop"). Stop chunks are left untouched. This
-// function is shared between aistudio and antigravity executors.
+// FilterSSEUsageMetadata 从非终止（finishReason != "stop"）的 SSE 事件中移除 usageMetadata，stop 块保留；aistudio 与 antigravity 执行器共用。
 func FilterSSEUsageMetadata(payload []byte) []byte {
 	if len(payload) == 0 {
 		return payload
@@ -462,8 +457,7 @@ func FilterSSEUsageMetadata(payload []byte) []byte {
 	return bytes.Join(lines, []byte("\n"))
 }
 
-// StripUsageMetadataFromJSON drops usageMetadata unless finishReason is present (terminal).
-// It handles both formats:
+// StripUsageMetadataFromJSON 在无 finishReason（非终止）时丢弃 usageMetadata，支持两种格式：
 // - Aistudio: candidates.0.finishReason
 // - Antigravity: response.candidates.0.finishReason
 func StripUsageMetadataFromJSON(rawJSON []byte) ([]byte, bool) {

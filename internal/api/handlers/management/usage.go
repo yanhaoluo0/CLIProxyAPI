@@ -20,7 +20,7 @@ type usageImportPayload struct {
 	Usage   usage.StatisticsSnapshot `json:"usage"`
 }
 
-// GetUsageStatistics returns the in-memory request statistics snapshot.
+// GetUsageStatistics 返回内存中的请求统计快照。
 func (h *Handler) GetUsageStatistics(c *gin.Context) {
 	var snapshot usage.StatisticsSnapshot
 	if h != nil && h.usageStats != nil {
@@ -32,7 +32,7 @@ func (h *Handler) GetUsageStatistics(c *gin.Context) {
 	})
 }
 
-// ExportUsageStatistics returns a complete usage snapshot for backup/migration.
+// ExportUsageStatistics 返回完整用量快照供备份/迁移使用。
 func (h *Handler) ExportUsageStatistics(c *gin.Context) {
 	var snapshot usage.StatisticsSnapshot
 	if h != nil && h.usageStats != nil {
@@ -45,7 +45,7 @@ func (h *Handler) ExportUsageStatistics(c *gin.Context) {
 	})
 }
 
-// ImportUsageStatistics merges a previously exported usage snapshot into memory.
+// ImportUsageStatistics 将此前导出的用量快照合并到内存。
 func (h *Handler) ImportUsageStatistics(c *gin.Context) {
 	if h == nil || h.usageStats == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "usage statistics unavailable"})

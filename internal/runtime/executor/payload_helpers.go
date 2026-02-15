@@ -11,11 +11,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// applyPayloadConfigWithRoot behaves like applyPayloadConfig but treats all parameter
-// paths as relative to the provided root path (for example, "request" for Gemini CLI)
-// and restricts matches to the given protocol when supplied. Defaults are checked
-// against the original payload when provided. requestedModel carries the client-visible
-// model name before alias resolution so payload rules can target aliases precisely.
+// applyPayloadConfigWithRoot 与 applyPayloadConfig 类似，但将所有参数路径视为相对给定 root（如 Gemini CLI 的 "request"），并可限制协议；requestedModel 为别名解析前的客户端可见模型名，供 payload 规则精确匹配。
 func applyPayloadConfigWithRoot(cfg *config.Config, model, protocol, root string, payload, original []byte, requestedModel string) []byte {
 	if cfg == nil || len(payload) == 0 {
 		return payload
@@ -208,9 +204,7 @@ func payloadModelCandidates(model, requestedModel string) []string {
 	return candidates
 }
 
-// buildPayloadPath combines an optional root path with a relative parameter path.
-// When root is empty, the parameter path is used as-is. When root is non-empty,
-// the parameter path is treated as relative to root.
+// buildPayloadPath 将可选的 root 与相对参数路径组合；root 为空时直接使用参数路径，非空时参数路径相对 root。
 func buildPayloadPath(root, path string) string {
 	r := strings.TrimSpace(root)
 	p := strings.TrimSpace(path)
@@ -273,8 +267,7 @@ func payloadRequestedModel(opts cliproxyexecutor.Options, fallback string) strin
 	}
 }
 
-// matchModelPattern performs simple wildcard matching where '*' matches zero or more characters.
-// Examples:
+// matchModelPattern 简单通配符匹配，'*' 匹配零或多个字符。示例：
 //
 //	"*-5" matches "gpt-5"
 //	"gpt-*" matches "gpt-5" and "gpt-4"

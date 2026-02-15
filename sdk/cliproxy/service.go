@@ -1,6 +1,5 @@
-// Package cliproxy provides the core service implementation for the CLI Proxy API.
-// It includes service lifecycle management, authentication handling, file watching,
-// and integration with various AI service providers through a unified interface.
+// Package cliproxy 提供 CLI Proxy API 的核心服务实现，包含生命周期管理、认证处理、文件监听，
+// 以及通过统一接口与各种 AI 服务提供方的集成。
 package cliproxy
 
 import (
@@ -26,9 +25,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Service wraps the proxy server lifecycle so external programs can embed the CLI proxy.
-// It manages the complete lifecycle including authentication, file watching, HTTP server,
-// and integration with various AI service providers.
+// Service 封装代理服务器生命周期，使外部程序可嵌入 CLI 代理。
+// 它管理完整生命周期，包括认证、文件监听、HTTP 服务器，以及与各种 AI 服务提供方的集成。
 type Service struct {
 	// cfg holds the current application configuration.
 	cfg *config.Config
@@ -91,16 +89,12 @@ type Service struct {
 	wsGateway *wsrelay.Manager
 }
 
-// RegisterUsagePlugin registers a usage plugin on the global usage manager.
-// This allows external code to monitor API usage and token consumption.
-//
-// Parameters:
-//   - plugin: The usage plugin to register
+// RegisterUsagePlugin 在全局用量管理器上注册用量插件，使外部代码可监控 API 用量与 token 消耗。
 func (s *Service) RegisterUsagePlugin(plugin usage.Plugin) {
 	usage.RegisterPlugin(plugin)
 }
 
-// newDefaultAuthManager creates a default authentication manager with all supported providers.
+// newDefaultAuthManager 创建包含所有支持提供方的默认认证管理器。
 func newDefaultAuthManager() *sdkAuth.Manager {
 	return sdkAuth.NewManager(
 		sdkAuth.GetTokenStore(),
@@ -165,7 +159,7 @@ func (s *Service) emitAuthUpdate(ctx context.Context, update watcher.AuthUpdate)
 		case s.authUpdates <- update:
 			return
 		default:
-			log.Debugf("auth update queue saturated, applying inline action=%v id=%s", update.Action, update.ID)
+			log.Debugf("认证更新队列已饱和，内联执行 action=%v id=%s", update.Action, update.ID)
 		}
 	}
 	s.handleAuthUpdate(ctx, update)
@@ -197,7 +191,7 @@ func (s *Service) handleAuthUpdate(ctx context.Context, update watcher.AuthUpdat
 		}
 		s.applyCoreAuthRemoval(ctx, id)
 	default:
-		log.Debugf("received unknown auth update action: %v", update.Action)
+		log.Debugf("收到未知认证更新操作: %v", update.Action)
 	}
 }
 
@@ -244,7 +238,7 @@ func (s *Service) wsOnConnected(channelID string) {
 		Attributes: map[string]string{"runtime_only": "true"},
 		Metadata:   map[string]any{"email": channelID}, // metadata drives logging and usage tracking
 	}
-	log.Infof("websocket provider connected: %s", channelID)
+	log.Infof("WebSocket 提供方已连接: %s", channelID)
 	s.emitAuthUpdate(context.Background(), watcher.AuthUpdate{
 		Action: watcher.AuthUpdateActionAdd,
 		ID:     auth.ID,
@@ -258,12 +252,12 @@ func (s *Service) wsOnDisconnected(channelID string, reason error) {
 	}
 	if reason != nil {
 		if strings.Contains(reason.Error(), "replaced by new connection") {
-			log.Infof("websocket provider replaced: %s", channelID)
+			log.Infof("WebSocket 提供方已替换: %s", channelID)
 			return
 		}
-		log.Warnf("websocket provider disconnected: %s (%v)", channelID, reason)
+		log.Warnf("WebSocket 提供方已断开: %s (%v)", channelID, reason)
 	} else {
-		log.Infof("websocket provider disconnected: %s", channelID)
+		log.Infof("WebSocket 提供方已断开: %s", channelID)
 	}
 	ctx := context.Background()
 	s.emitAuthUpdate(ctx, watcher.AuthUpdate{
@@ -296,7 +290,7 @@ func (s *Service) applyCoreAuthAddOrUpdate(ctx context.Context, auth *coreauth.A
 		_, err = s.coreManager.Register(ctx, auth)
 	}
 	if err != nil {
-		log.Errorf("failed to %s auth %s: %v", op, auth.ID, err)
+		log.Errorf("认证 %s 操作 %s 失败: %v", auth.ID, op, err)
 		current, ok := s.coreManager.GetByID(auth.ID)
 		if !ok || current.Disabled {
 			GlobalModelRegistry().UnregisterClient(auth.ID)
@@ -323,7 +317,7 @@ func (s *Service) applyCoreAuthRemoval(ctx context.Context, id string) {
 		existing.Disabled = true
 		existing.Status = coreauth.StatusDisabled
 		if _, err := s.coreManager.Update(ctx, existing); err != nil {
-			log.Errorf("failed to disable auth %s: %v", id, err)
+			log.Errorf("禁用认证 %s 失败: %v", id, err)
 		}
 	}
 }
@@ -409,7 +403,7 @@ func (s *Service) ensureExecutorsForAuth(a *coreauth.Auth) {
 	}
 }
 
-// rebindExecutors refreshes provider executors so they observe the latest configuration.
+// rebindExecutors 刷新提供方执行器以应用最新配置。
 func (s *Service) rebindExecutors() {
 	if s == nil || s.coreManager == nil {
 		return
@@ -420,18 +414,11 @@ func (s *Service) rebindExecutors() {
 	}
 }
 
-// Run starts the service and blocks until the context is cancelled or the server stops.
-// It initializes all components including authentication, file watching, HTTP server,
-// and starts processing requests. The method blocks until the context is cancelled.
-//
-// Parameters:
-//   - ctx: The context for controlling the service lifecycle
-//
-// Returns:
-//   - error: An error if the service fails to start or run
+// Run 启动服务并阻塞直至上下文取消或服务器停止。
+// 它初始化所有组件（认证、文件监听、HTTP 服务器）并开始处理请求。
 func (s *Service) Run(ctx context.Context) error {
 	if s == nil {
-		return fmt.Errorf("cliproxy: service is nil")
+		return fmt.Errorf("cliproxy: 服务为 nil")
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -443,7 +430,7 @@ func (s *Service) Run(ctx context.Context) error {
 	defer shutdownCancel()
 	defer func() {
 		if err := s.Shutdown(shutdownCtx); err != nil {
-			log.Errorf("service shutdown returned error: %v", err)
+			log.Errorf("服务关闭返回错误: %v", err)
 		}
 	}()
 
@@ -455,7 +442,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	if s.coreManager != nil {
 		if errLoad := s.coreManager.Load(ctx); errLoad != nil {
-			log.Warnf("failed to load auth store: %v", errLoad)
+			log.Warnf("加载认证存储失败: %v", errLoad)
 		}
 	}
 
@@ -495,13 +482,13 @@ func (s *Service) Run(ctx context.Context) error {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if errStop := s.wsGateway.Stop(ctx); errStop != nil {
-					log.Warnf("failed to reset websocket connections after ws-auth change %t -> %t: %v", oldEnabled, newEnabled, errStop)
+					log.Warnf("ws-auth 变更 %t -> %t 后重置 WebSocket 连接失败: %v", oldEnabled, newEnabled, errStop)
 					return
 				}
-				log.Debugf("ws-auth enabled; existing websocket sessions terminated to enforce authentication")
+				log.Debugf("ws-auth 已启用；为强制认证已终止现有 WebSocket 会话")
 				return
 			}
-			log.Debugf("ws-auth disabled; existing websocket sessions remain connected")
+			log.Debugf("ws-auth 已禁用；现有 WebSocket 会话保持连接")
 		})
 	}
 
@@ -584,7 +571,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	watcherWrapper, err = s.watcherFactory(s.configPath, s.cfg.AuthDir, reloadCallback)
 	if err != nil {
-		return fmt.Errorf("cliproxy: failed to create watcher: %w", err)
+		return fmt.Errorf("cliproxy: 创建监听器失败: %w", err)
 	}
 	s.watcher = watcherWrapper
 	s.ensureAuthUpdateQueue(ctx)
@@ -596,35 +583,27 @@ func (s *Service) Run(ctx context.Context) error {
 	watcherCtx, watcherCancel := context.WithCancel(context.Background())
 	s.watcherCancel = watcherCancel
 	if err = watcherWrapper.Start(watcherCtx); err != nil {
-		return fmt.Errorf("cliproxy: failed to start watcher: %w", err)
+		return fmt.Errorf("cliproxy: 启动监听器失败: %w", err)
 	}
-	log.Info("file watcher started for config and auth directory changes")
+	log.Info("已启动文件监听器，监控配置与认证目录变更")
 
 	// Prefer core auth manager auto refresh if available.
 	if s.coreManager != nil {
 		interval := 15 * time.Minute
 		s.coreManager.StartAutoRefresh(context.Background(), interval)
-		log.Infof("core auth auto-refresh started (interval=%s)", interval)
+		log.Infof("核心认证自动刷新已启动 (间隔=%s)", interval)
 	}
 
 	select {
 	case <-ctx.Done():
-		log.Debug("service context cancelled, shutting down...")
+		log.Debug("服务上下文已取消，正在关闭...")
 		return ctx.Err()
 	case err = <-s.serverErr:
 		return err
 	}
 }
 
-// Shutdown gracefully stops background workers and the HTTP server.
-// It ensures all resources are properly cleaned up and connections are closed.
-// The shutdown is idempotent and can be called multiple times safely.
-//
-// Parameters:
-//   - ctx: The context for controlling the shutdown timeout
-//
-// Returns:
-//   - error: An error if shutdown fails
+// Shutdown 优雅停止后台工作线程与 HTTP 服务器，确保资源正确清理、连接关闭，可安全多次调用。
 func (s *Service) Shutdown(ctx context.Context) error {
 	if s == nil {
 		return nil
@@ -645,13 +624,13 @@ func (s *Service) Shutdown(ctx context.Context) error {
 		}
 		if s.watcher != nil {
 			if err := s.watcher.Stop(); err != nil {
-				log.Errorf("failed to stop file watcher: %v", err)
+				log.Errorf("停止文件监听器失败: %v", err)
 				shutdownErr = err
 			}
 		}
 		if s.wsGateway != nil {
 			if err := s.wsGateway.Stop(ctx); err != nil {
-				log.Errorf("failed to stop websocket gateway: %v", err)
+				log.Errorf("停止 WebSocket 网关失败: %v", err)
 				if shutdownErr == nil {
 					shutdownErr = err
 				}
@@ -663,7 +642,7 @@ func (s *Service) Shutdown(ctx context.Context) error {
 		}
 
 		if errShutdownPprof := s.shutdownPprof(ctx); errShutdownPprof != nil {
-			log.Errorf("failed to stop pprof server: %v", errShutdownPprof)
+			log.Errorf("停止 pprof 服务器失败: %v", errShutdownPprof)
 			if shutdownErr == nil {
 				shutdownErr = errShutdownPprof
 			}
@@ -675,7 +654,7 @@ func (s *Service) Shutdown(ctx context.Context) error {
 			shutdownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 			if err := s.server.Stop(shutdownCtx); err != nil {
-				log.Errorf("error stopping API server: %v", err)
+				log.Errorf("停止 API 服务器错误: %v", err)
 				if shutdownErr == nil {
 					shutdownErr = err
 				}
@@ -692,20 +671,20 @@ func (s *Service) ensureAuthDir() error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			if mkErr := os.MkdirAll(s.cfg.AuthDir, 0o755); mkErr != nil {
-				return fmt.Errorf("cliproxy: failed to create auth directory %s: %w", s.cfg.AuthDir, mkErr)
+				return fmt.Errorf("cliproxy: 创建认证目录 %s 失败: %w", s.cfg.AuthDir, mkErr)
 			}
-			log.Infof("created missing auth directory: %s", s.cfg.AuthDir)
+			log.Infof("已创建缺失的认证目录: %s", s.cfg.AuthDir)
 			return nil
 		}
-		return fmt.Errorf("cliproxy: error checking auth directory %s: %w", s.cfg.AuthDir, err)
+		return fmt.Errorf("cliproxy: 检查认证目录 %s 出错: %w", s.cfg.AuthDir, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("cliproxy: auth path exists but is not a directory: %s", s.cfg.AuthDir)
+		return fmt.Errorf("cliproxy: 认证路径 %s 存在但非目录: %s", s.cfg.AuthDir)
 	}
 	return nil
 }
 
-// registerModelsForAuth (re)binds provider models in the global registry using the core auth ID as client identifier.
+// registerModelsForAuth 使用核心认证 ID 作为客户端标识，在全局注册表中（重新）绑定提供方模型。
 func (s *Service) registerModelsForAuth(a *coreauth.Auth) {
 	if a == nil || a.ID == "" {
 		return
@@ -1121,7 +1100,7 @@ func applyModelPrefixes(models []*ModelInfo, prefix string, forceModelPrefix boo
 	return out
 }
 
-// matchWildcard performs case-insensitive wildcard matching where '*' matches any substring.
+// matchWildcard 执行不区分大小写的通配符匹配，'*' 匹配任意子串。
 func matchWildcard(pattern, value string) bool {
 	if pattern == "" {
 		return false

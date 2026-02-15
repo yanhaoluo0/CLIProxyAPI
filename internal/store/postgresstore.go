@@ -25,7 +25,7 @@ const (
 	defaultConfigKey   = "config"
 )
 
-// PostgresStoreConfig captures configuration required to initialize a Postgres-backed store.
+// PostgresStoreConfig 捕获初始化 Postgres 存储所需的配置。
 type PostgresStoreConfig struct {
 	DSN         string
 	Schema      string
@@ -34,8 +34,7 @@ type PostgresStoreConfig struct {
 	SpoolDir    string
 }
 
-// PostgresStore persists configuration and authentication metadata using PostgreSQL as backend
-// while mirroring data to a local workspace so existing file-based workflows continue to operate.
+// PostgresStore 使用 PostgreSQL 作为后端持久化配置与认证元数据，同时镜像数据到本地工作目录以保持现有基于文件流程可用。
 type PostgresStore struct {
 	db         *sql.DB
 	cfg        PostgresStoreConfig
@@ -49,7 +48,7 @@ type PostgresStore struct {
 func NewPostgresStore(ctx context.Context, cfg PostgresStoreConfig) (*PostgresStore, error) {
 	trimmedDSN := strings.TrimSpace(cfg.DSN)
 	if trimmedDSN == "" {
-		return nil, fmt.Errorf("postgres store: DSN is required")
+		return nil, fmt.Errorf("postgres store: DSN 为必填项")
 	}
 	cfg.DSN = trimmedDSN
 	if cfg.ConfigTable == "" {
@@ -69,12 +68,12 @@ func NewPostgresStore(ctx context.Context, cfg PostgresStoreConfig) (*PostgresSt
 	}
 	absSpool, err := filepath.Abs(spoolRoot)
 	if err != nil {
-		return nil, fmt.Errorf("postgres store: resolve spool directory: %w", err)
+		return nil, fmt.Errorf("postgres store: 解析 spool 目录失败: %w", err)
 	}
 	configDir := filepath.Join(absSpool, "config")
 	authDir := filepath.Join(absSpool, "auths")
 	if err = os.MkdirAll(configDir, 0o700); err != nil {
-		return nil, fmt.Errorf("postgres store: create config directory: %w", err)
+		return nil, fmt.Errorf("postgres store: 创建配置目录失败: %w", err)
 	}
 	if err = os.MkdirAll(authDir, 0o700); err != nil {
 		return nil, fmt.Errorf("postgres store: create auth directory: %w", err)
@@ -82,11 +81,11 @@ func NewPostgresStore(ctx context.Context, cfg PostgresStoreConfig) (*PostgresSt
 
 	db, err := sql.Open("pgx", cfg.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("postgres store: open database connection: %w", err)
+		return nil, fmt.Errorf("postgres store: 打开数据库连接失败: %w", err)
 	}
 	if err = db.PingContext(ctx); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("postgres store: ping database: %w", err)
+		return fmt.Errorf("postgres store: ping 数据库: %w", err)
 	}
 
 	store := &PostgresStore{
@@ -99,7 +98,7 @@ func NewPostgresStore(ctx context.Context, cfg PostgresStoreConfig) (*PostgresSt
 	return store, nil
 }
 
-// Close releases the underlying database connection.
+// Close 释放底层数据库连接。
 func (s *PostgresStore) Close() error {
 	if s == nil || s.db == nil {
 		return nil
@@ -138,7 +137,7 @@ func (s *PostgresStore) EnsureSchema(ctx context.Context) error {
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)
 	`, authTable)); err != nil {
-		return fmt.Errorf("postgres store: create auth table: %w", err)
+		return fmt.Errorf("postgres store: create config table: %w", err)
 	}
 	return nil
 }
@@ -196,7 +195,7 @@ func (s *PostgresStore) Save(ctx context.Context, auth *cliproxyauth.Auth) (stri
 		return "", err
 	}
 	if path == "" {
-		return "", fmt.Errorf("postgres store: missing file path attribute for %s", auth.ID)
+		return "", fmt.Errorf("postgres store: 缺少文件路径属性: %s", auth.ID)
 	}
 
 	if auth.Disabled {
@@ -209,7 +208,7 @@ func (s *PostgresStore) Save(ctx context.Context, auth *cliproxyauth.Auth) (stri
 	defer s.mu.Unlock()
 
 	if err = os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return "", fmt.Errorf("postgres store: create auth directory: %w", err)
+		return "", fmt.Errorf("postgres store: 创建认证目录失败: %w", err)
 	}
 
 	switch {
@@ -220,7 +219,7 @@ func (s *PostgresStore) Save(ctx context.Context, auth *cliproxyauth.Auth) (stri
 	case auth.Metadata != nil:
 		raw, errMarshal := json.Marshal(auth.Metadata)
 		if errMarshal != nil {
-			return "", fmt.Errorf("postgres store: marshal metadata: %w", errMarshal)
+			return "", fmt.Errorf("postgres store: 序列化元数据失败: %w", errMarshal)
 		}
 		if existing, errRead := os.ReadFile(path); errRead == nil {
 			if jsonEqual(existing, raw) {

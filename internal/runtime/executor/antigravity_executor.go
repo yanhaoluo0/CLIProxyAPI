@@ -1,6 +1,4 @@
-// Package executor provides runtime execution capabilities for various AI service providers.
-// This file implements the Antigravity executor that proxies requests to the antigravity
-// upstream using OAuth credentials.
+// Package executor 为多种 AI 服务提供运行时执行能力，本文件实现使用 OAuth 凭证向 antigravity 上游代理请求的 Antigravity 执行器。
 package executor
 
 import (
@@ -56,26 +54,20 @@ var (
 	randSourceMutex sync.Mutex
 )
 
-// AntigravityExecutor proxies requests to the antigravity upstream.
+// AntigravityExecutor 向 antigravity 上游代理请求。
 type AntigravityExecutor struct {
 	cfg *config.Config
 }
 
-// NewAntigravityExecutor creates a new Antigravity executor instance.
-//
-// Parameters:
-//   - cfg: The application configuration
-//
-// Returns:
-//   - *AntigravityExecutor: A new Antigravity executor instance
+// NewAntigravityExecutor 创建新的 Antigravity 执行器实例。
 func NewAntigravityExecutor(cfg *config.Config) *AntigravityExecutor {
 	return &AntigravityExecutor{cfg: cfg}
 }
 
-// Identifier returns the executor identifier.
+// Identifier 返回执行器标识。
 func (e *AntigravityExecutor) Identifier() string { return antigravityAuthType }
 
-// PrepareRequest injects Antigravity credentials into the outgoing HTTP request.
+// PrepareRequest 将 Antigravity 凭证注入出站 HTTP 请求。
 func (e *AntigravityExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -91,10 +83,10 @@ func (e *AntigravityExecutor) PrepareRequest(req *http.Request, auth *cliproxyau
 	return nil
 }
 
-// HttpRequest injects Antigravity credentials into the request and executes it.
+// HttpRequest 将 Antigravity 凭证注入请求并执行。
 func (e *AntigravityExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("antigravity executor: request is nil")
+		return nil, fmt.Errorf("antigravity 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -107,7 +99,7 @@ func (e *AntigravityExecutor) HttpRequest(ctx context.Context, auth *cliproxyaut
 	return httpClient.Do(httpReq)
 }
 
-// Execute performs a non-streaming request to the Antigravity API.
+// Execute 对 Antigravity API 执行非流式请求。
 func (e *AntigravityExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	if opts.Alt == "responses/compact" {
 		return resp, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -177,7 +169,7 @@ attemptLoop:
 				lastBody = nil
 				lastErr = errDo
 				if idx+1 < len(baseURLs) {
-					log.Debugf("antigravity executor: request error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+					log.Debugf("antigravity 执行器: base url %s 请求错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 					continue
 				}
 				err = errDo
@@ -187,7 +179,7 @@ attemptLoop:
 			recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
 			bodyBytes, errRead := io.ReadAll(httpResp.Body)
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("antigravity executor: close response body error: %v", errClose)
+				log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 			}
 			if errRead != nil {
 				recordAPIResponseError(ctx, e.cfg, errRead)
@@ -197,22 +189,22 @@ attemptLoop:
 			appendAPIResponseChunk(ctx, e.cfg, bodyBytes)
 
 			if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
-				log.Debugf("antigravity executor: upstream error status: %d, body: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), bodyBytes))
+				log.Debugf("antigravity 执行器: 上游错误状态: %d, body: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), bodyBytes))
 				lastStatus = httpResp.StatusCode
 				lastBody = append([]byte(nil), bodyBytes...)
 				lastErr = nil
 				if httpResp.StatusCode == http.StatusTooManyRequests && idx+1 < len(baseURLs) {
-					log.Debugf("antigravity executor: rate limited on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+					log.Debugf("antigravity 执行器: base url %s 触发限流，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 					continue
 				}
 				if antigravityShouldRetryNoCapacity(httpResp.StatusCode, bodyBytes) {
 					if idx+1 < len(baseURLs) {
-						log.Debugf("antigravity executor: no capacity on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+						log.Debugf("antigravity 执行器: base url %s 容量不足，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 						continue
 					}
 					if attempt+1 < attempts {
 						delay := antigravityNoCapacityRetryDelay(attempt)
-						log.Debugf("antigravity executor: no capacity for model %s, retrying in %s (attempt %d/%d)", baseModel, delay, attempt+1, attempts)
+						log.Debugf("antigravity 执行器: 模型 %s 容量不足，%s 后重试 (第 %d/%d 次)", baseModel, delay, attempt+1, attempts)
 						if errWait := antigravityWait(ctx, delay); errWait != nil {
 							return resp, errWait
 						}
@@ -257,7 +249,7 @@ attemptLoop:
 	return resp, err
 }
 
-// executeClaudeNonStream performs a claude non-streaming request to the Antigravity API.
+// executeClaudeNonStream 对 Antigravity API 执行 claude 非流式请求。
 func (e *AntigravityExecutor) executeClaudeNonStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -319,7 +311,7 @@ attemptLoop:
 				lastBody = nil
 				lastErr = errDo
 				if idx+1 < len(baseURLs) {
-					log.Debugf("antigravity executor: request error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+					log.Debugf("antigravity 执行器: base url %s 请求错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 					continue
 				}
 				err = errDo
@@ -329,7 +321,7 @@ attemptLoop:
 			if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
 				bodyBytes, errRead := io.ReadAll(httpResp.Body)
 				if errClose := httpResp.Body.Close(); errClose != nil {
-					log.Errorf("antigravity executor: close response body error: %v", errClose)
+					log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 				}
 				if errRead != nil {
 					recordAPIResponseError(ctx, e.cfg, errRead)
@@ -345,7 +337,7 @@ attemptLoop:
 					lastBody = nil
 					lastErr = errRead
 					if idx+1 < len(baseURLs) {
-						log.Debugf("antigravity executor: read error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+						log.Debugf("antigravity 执行器: base url %s 读取错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 						continue
 					}
 					err = errRead
@@ -356,17 +348,17 @@ attemptLoop:
 				lastBody = append([]byte(nil), bodyBytes...)
 				lastErr = nil
 				if httpResp.StatusCode == http.StatusTooManyRequests && idx+1 < len(baseURLs) {
-					log.Debugf("antigravity executor: rate limited on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+					log.Debugf("antigravity 执行器: base url %s 触发限流，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 					continue
 				}
 				if antigravityShouldRetryNoCapacity(httpResp.StatusCode, bodyBytes) {
 					if idx+1 < len(baseURLs) {
-						log.Debugf("antigravity executor: no capacity on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+						log.Debugf("antigravity 执行器: base url %s 容量不足，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 						continue
 					}
 					if attempt+1 < attempts {
 						delay := antigravityNoCapacityRetryDelay(attempt)
-						log.Debugf("antigravity executor: no capacity for model %s, retrying in %s (attempt %d/%d)", baseModel, delay, attempt+1, attempts)
+						log.Debugf("antigravity 执行器: 模型 %s 容量不足，%s 后重试 (第 %d/%d 次)", baseModel, delay, attempt+1, attempts)
 						if errWait := antigravityWait(ctx, delay); errWait != nil {
 							return resp, errWait
 						}
@@ -388,7 +380,7 @@ attemptLoop:
 				defer close(out)
 				defer func() {
 					if errClose := resp.Body.Close(); errClose != nil {
-						log.Errorf("antigravity executor: close response body error: %v", errClose)
+						log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 					}
 				}()
 				scanner := bufio.NewScanner(resp.Body)
@@ -644,7 +636,7 @@ func (e *AntigravityExecutor) convertStreamToNonStream(stream []byte) []byte {
 	return []byte(output)
 }
 
-// ExecuteStream performs a streaming request to the Antigravity API.
+// ExecuteStream 对 Antigravity API 执行流式请求。
 func (e *AntigravityExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	if opts.Alt == "responses/compact" {
 		return nil, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -710,7 +702,7 @@ attemptLoop:
 				lastBody = nil
 				lastErr = errDo
 				if idx+1 < len(baseURLs) {
-					log.Debugf("antigravity executor: request error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+					log.Debugf("antigravity 执行器: base url %s 请求错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 					continue
 				}
 				err = errDo
@@ -720,7 +712,7 @@ attemptLoop:
 			if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
 				bodyBytes, errRead := io.ReadAll(httpResp.Body)
 				if errClose := httpResp.Body.Close(); errClose != nil {
-					log.Errorf("antigravity executor: close response body error: %v", errClose)
+					log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 				}
 				if errRead != nil {
 					recordAPIResponseError(ctx, e.cfg, errRead)
@@ -736,7 +728,7 @@ attemptLoop:
 					lastBody = nil
 					lastErr = errRead
 					if idx+1 < len(baseURLs) {
-						log.Debugf("antigravity executor: read error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+						log.Debugf("antigravity 执行器: base url %s 读取错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 						continue
 					}
 					err = errRead
@@ -747,17 +739,17 @@ attemptLoop:
 				lastBody = append([]byte(nil), bodyBytes...)
 				lastErr = nil
 				if httpResp.StatusCode == http.StatusTooManyRequests && idx+1 < len(baseURLs) {
-					log.Debugf("antigravity executor: rate limited on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+					log.Debugf("antigravity 执行器: base url %s 触发限流，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 					continue
 				}
 				if antigravityShouldRetryNoCapacity(httpResp.StatusCode, bodyBytes) {
 					if idx+1 < len(baseURLs) {
-						log.Debugf("antigravity executor: no capacity on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+						log.Debugf("antigravity 执行器: base url %s 容量不足，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 						continue
 					}
 					if attempt+1 < attempts {
 						delay := antigravityNoCapacityRetryDelay(attempt)
-						log.Debugf("antigravity executor: no capacity for model %s, retrying in %s (attempt %d/%d)", baseModel, delay, attempt+1, attempts)
+						log.Debugf("antigravity 执行器: 模型 %s 容量不足，%s 后重试 (第 %d/%d 次)", baseModel, delay, attempt+1, attempts)
 						if errWait := antigravityWait(ctx, delay); errWait != nil {
 							return nil, errWait
 						}
@@ -780,7 +772,7 @@ attemptLoop:
 				defer close(out)
 				defer func() {
 					if errClose := resp.Body.Close(); errClose != nil {
-						log.Errorf("antigravity executor: close response body error: %v", errClose)
+						log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 					}
 				}()
 				scanner := bufio.NewScanner(resp.Body)
@@ -843,7 +835,7 @@ attemptLoop:
 	return nil, err
 }
 
-// Refresh refreshes the authentication credentials using the refresh token.
+// Refresh 使用 refresh token 刷新认证凭证。
 func (e *AntigravityExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
 	if auth == nil {
 		return auth, nil
@@ -855,7 +847,7 @@ func (e *AntigravityExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Au
 	return updated, nil
 }
 
-// CountTokens counts tokens for the given request using the Antigravity API.
+// CountTokens 使用 Antigravity API 为给定请求计 token 数。
 func (e *AntigravityExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -948,7 +940,7 @@ func (e *AntigravityExecutor) CountTokens(ctx context.Context, auth *cliproxyaut
 			lastBody = nil
 			lastErr = errDo
 			if idx+1 < len(baseURLs) {
-				log.Debugf("antigravity executor: request error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+				log.Debugf("antigravity 执行器: base url %s 请求错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 				continue
 			}
 			return cliproxyexecutor.Response{}, errDo
@@ -957,7 +949,7 @@ func (e *AntigravityExecutor) CountTokens(ctx context.Context, auth *cliproxyaut
 		recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
 		bodyBytes, errRead := io.ReadAll(httpResp.Body)
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("antigravity executor: close response body error: %v", errClose)
+			log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 		}
 		if errRead != nil {
 			recordAPIResponseError(ctx, e.cfg, errRead)
@@ -975,7 +967,7 @@ func (e *AntigravityExecutor) CountTokens(ctx context.Context, auth *cliproxyaut
 		lastBody = append([]byte(nil), bodyBytes...)
 		lastErr = nil
 		if httpResp.StatusCode == http.StatusTooManyRequests && idx+1 < len(baseURLs) {
-			log.Debugf("antigravity executor: rate limited on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+			log.Debugf("antigravity 执行器: base url %s 触发限流，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 			continue
 		}
 		sErr := statusErr{code: httpResp.StatusCode, msg: string(bodyBytes)}
@@ -1003,7 +995,7 @@ func (e *AntigravityExecutor) CountTokens(ctx context.Context, auth *cliproxyaut
 	}
 }
 
-// FetchAntigravityModels retrieves available models using the supplied auth.
+// FetchAntigravityModels 使用提供的 auth 获取可用模型列表。
 func FetchAntigravityModels(ctx context.Context, auth *cliproxyauth.Auth, cfg *config.Config) []*registry.ModelInfo {
 	exec := &AntigravityExecutor{cfg: cfg}
 	token, updatedAuth, errToken := exec.ensureAccessToken(ctx, auth)
@@ -1036,7 +1028,7 @@ func FetchAntigravityModels(ctx context.Context, auth *cliproxyauth.Auth, cfg *c
 				return nil
 			}
 			if idx+1 < len(baseURLs) {
-				log.Debugf("antigravity executor: models request error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+				log.Debugf("antigravity 执行器: models 请求在 base url %s 出错，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 				continue
 			}
 			return nil
@@ -1044,18 +1036,18 @@ func FetchAntigravityModels(ctx context.Context, auth *cliproxyauth.Auth, cfg *c
 
 		bodyBytes, errRead := io.ReadAll(httpResp.Body)
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("antigravity executor: close response body error: %v", errClose)
+			log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 		}
 		if errRead != nil {
 			if idx+1 < len(baseURLs) {
-				log.Debugf("antigravity executor: models read error on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+				log.Debugf("antigravity 执行器: models 请求在 base url %s 读取错误，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 				continue
 			}
 			return nil
 		}
 		if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
 			if httpResp.StatusCode == http.StatusTooManyRequests && idx+1 < len(baseURLs) {
-				log.Debugf("antigravity executor: models request rate limited on base url %s, retrying with fallback base url: %s", baseURL, baseURLs[idx+1])
+				log.Debugf("antigravity 执行器: models 请求在 base url %s 触发限流，使用回退 base url 重试: %s", baseURL, baseURLs[idx+1])
 				continue
 			}
 			return nil
@@ -1165,7 +1157,7 @@ func (e *AntigravityExecutor) refreshToken(ctx context.Context, auth *cliproxyau
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("antigravity executor: close response body error: %v", errClose)
+			log.Errorf("antigravity 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 
@@ -1207,7 +1199,7 @@ func (e *AntigravityExecutor) refreshToken(ctx context.Context, auth *cliproxyau
 	auth.Metadata["expired"] = now.Add(time.Duration(tokenResp.ExpiresIn) * time.Second).Format(time.RFC3339)
 	auth.Metadata["type"] = antigravityAuthType
 	if errProject := e.ensureAntigravityProjectID(ctx, auth, tokenResp.AccessToken); errProject != nil {
-		log.Warnf("antigravity executor: ensure project id failed: %v", errProject)
+		log.Warnf("antigravity 执行器: 确保项目 ID 失败: %v", errProject)
 	}
 	return auth, nil
 }

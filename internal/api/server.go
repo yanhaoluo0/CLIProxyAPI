@@ -1,7 +1,5 @@
-// Package api provides the HTTP API server implementation for the CLI Proxy API.
-// It includes the main server struct, routing setup, middleware for CORS and authentication,
-// and integration with various AI API handlers (OpenAI, Claude, Gemini).
-// The server supports hot-reloading of clients and configuration.
+// Package api 提供 CLI Proxy API 的 HTTP 服务实现，含主服务结构、路由、CORS 与认证中间件，
+// 以及与各类 AI API 处理器（OpenAI、Claude、Gemini）的集成，支持客户端与配置热重载。
 package api
 
 import (
@@ -53,7 +51,7 @@ type serverOptionConfig struct {
 	keepAliveOnTimeout   func()
 }
 
-// ServerOption customises HTTP server construction.
+// ServerOption 用于在构建 HTTP 服务时注入可选配置。
 type ServerOption func(*serverOptionConfig)
 
 func defaultRequestLoggerFactory(cfg *config.Config, configPath string) logging.RequestLogger {
@@ -64,35 +62,35 @@ func defaultRequestLoggerFactory(cfg *config.Config, configPath string) logging.
 	return logging.NewFileRequestLogger(cfg.RequestLog, "logs", configDir, cfg.ErrorLogsMaxFiles)
 }
 
-// WithMiddleware appends additional Gin middleware during server construction.
+// WithMiddleware 在构建服务时追加额外的 Gin 中间件。
 func WithMiddleware(mw ...gin.HandlerFunc) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.extraMiddleware = append(cfg.extraMiddleware, mw...)
 	}
 }
 
-// WithEngineConfigurator allows callers to mutate the Gin engine prior to middleware setup.
+// WithEngineConfigurator 允许在挂载中间件前对 Gin Engine 进行自定义配置。
 func WithEngineConfigurator(fn func(*gin.Engine)) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.engineConfigurator = fn
 	}
 }
 
-// WithRouterConfigurator appends a callback after default routes are registered.
+// WithRouterConfigurator 在默认路由注册完成后执行自定义回调。
 func WithRouterConfigurator(fn func(*gin.Engine, *handlers.BaseAPIHandler, *config.Config)) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.routerConfigurator = fn
 	}
 }
 
-// WithLocalManagementPassword stores a runtime-only management password accepted for localhost requests.
+// WithLocalManagementPassword 设置仅运行时生效的本机管理密码，用于 localhost 请求。
 func WithLocalManagementPassword(password string) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.localPassword = password
 	}
 }
 
-// WithKeepAliveEndpoint enables a keep-alive endpoint with the provided timeout and callback.
+// WithKeepAliveEndpoint 启用 keep-alive 端点，并设置超时与超时回调。
 func WithKeepAliveEndpoint(timeout time.Duration, onTimeout func()) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		if timeout <= 0 || onTimeout == nil {
@@ -104,84 +102,43 @@ func WithKeepAliveEndpoint(timeout time.Duration, onTimeout func()) ServerOption
 	}
 }
 
-// WithRequestLoggerFactory customises request logger creation.
+// WithRequestLoggerFactory 自定义请求日志器的创建方式。
 func WithRequestLoggerFactory(factory func(*config.Config, string) logging.RequestLogger) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.requestLoggerFactory = factory
 	}
 }
 
-// Server represents the main API server.
-// It encapsulates the Gin engine, HTTP server, handlers, and configuration.
+// Server 为主 API 服务，封装 Gin Engine、HTTP Server、处理器与配置。
 type Server struct {
-	// engine is the Gin web framework engine instance.
-	engine *gin.Engine
-
-	// server is the underlying HTTP server.
-	server *http.Server
-
-	// handlers contains the API handlers for processing requests.
-	handlers *handlers.BaseAPIHandler
-
-	// cfg holds the current server configuration.
-	cfg *config.Config
-
-	// oldConfigYaml stores a YAML snapshot of the previous configuration for change detection.
-	// This prevents issues when the config object is modified in place by Management API.
-	oldConfigYaml []byte
-
-	// accessManager handles request authentication providers.
-	accessManager *sdkaccess.Manager
-
-	// requestLogger is the request logger instance for dynamic configuration updates.
-	requestLogger logging.RequestLogger
-	loggerToggle  func(bool)
-
-	// configFilePath is the absolute path to the YAML config file for persistence.
-	configFilePath string
-
-	// currentPath is the absolute path to the current working directory.
-	currentPath string
-
-	// wsRoutes tracks registered websocket upgrade paths.
-	wsRouteMu     sync.Mutex
-	wsRoutes      map[string]struct{}
-	wsAuthChanged func(bool, bool)
-	wsAuthEnabled atomic.Bool
-
-	// management handler
-	mgmt *managementHandlers.Handler
-
-	// ampModule is the Amp routing module for model mapping hot-reload
-	ampModule *ampmodule.AmpModule
-
-	// managementRoutesRegistered tracks whether the management routes have been attached to the engine.
+	engine                     *gin.Engine
+	server                     *http.Server
+	handlers                   *handlers.BaseAPIHandler
+	cfg                        *config.Config
+	oldConfigYaml              []byte
+	accessManager              *sdkaccess.Manager
+	requestLogger              logging.RequestLogger
+	loggerToggle               func(bool)
+	configFilePath             string
+	currentPath                string
+	wsRouteMu                  sync.Mutex
+	wsRoutes                   map[string]struct{}
+	wsAuthChanged              func(bool, bool)
+	wsAuthEnabled              atomic.Bool
+	mgmt                       *managementHandlers.Handler
+	ampModule                  *ampmodule.AmpModule
 	managementRoutesRegistered atomic.Bool
-	// managementRoutesEnabled controls whether management endpoints serve real handlers.
-	managementRoutesEnabled atomic.Bool
-
-	// envManagementSecret indicates whether MANAGEMENT_PASSWORD is configured.
-	envManagementSecret bool
-
-	localPassword string
-
-	keepAliveEnabled   bool
-	keepAliveTimeout   time.Duration
-	keepAliveOnTimeout func()
-	keepAliveHeartbeat chan struct{}
-	keepAliveStop      chan struct{}
+	managementRoutesEnabled    atomic.Bool
+	envManagementSecret        bool
+	localPassword              string
+	keepAliveEnabled           bool
+	keepAliveTimeout           time.Duration
+	keepAliveOnTimeout         func()
+	keepAliveHeartbeat         chan struct{}
+	keepAliveStop              chan struct{}
 }
 
-// NewServer creates and initializes a new API server instance.
-// It sets up the Gin engine, middleware, routes, and handlers.
-//
-// Parameters:
-//   - cfg: The server configuration
-//   - authManager: core runtime auth manager
-//   - accessManager: request authentication manager
-//
-// Returns:
-//   - *Server: A new server instance
+// NewServer 创建并初始化 API 服务实例，完成 Gin Engine、中间件、路由与处理器的注册。
 func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdkaccess.Manager, configFilePath string, opts ...ServerOption) *Server {
 	optionState := &serverOptionConfig{
 		requestLoggerFactory: defaultRequestLoggerFactory,
@@ -189,26 +146,21 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	for i := range opts {
 		opts[i](optionState)
 	}
-	// Set gin mode
 	if !cfg.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Create gin engine
 	engine := gin.New()
 	if optionState.engineConfigurator != nil {
 		optionState.engineConfigurator(engine)
 	}
 
-	// Add middleware
 	engine.Use(logging.GinLogrusLogger())
 	engine.Use(logging.GinLogrusRecovery())
 	for _, mw := range optionState.extraMiddleware {
 		engine.Use(mw)
 	}
 
-	// Add request logging middleware (positioned after recovery, before auth)
-	// Resolve logs directory relative to the configuration file directory.
 	var requestLogger logging.RequestLogger
 	var toggle func(bool)
 	if !cfg.CommercialMode {
@@ -233,7 +185,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	envAdminPassword = strings.TrimSpace(envAdminPassword)
 	envManagementSecret := envAdminPasswordSet && envAdminPassword != ""
 
-	// Create server instance
 	s := &Server{
 		engine:              engine,
 		handlers:            handlers.NewBaseAPIHandlers(&cfg.SDKConfig, authManager),
@@ -247,7 +198,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		wsRoutes:            make(map[string]struct{}),
 	}
 	s.wsAuthEnabled.Store(cfg.WebsocketAuth)
-	// Save initial YAML snapshot
 	s.oldConfigYaml, _ = yaml.Marshal(cfg)
 	s.applyAccessConfig(nil, cfg)
 	if authManager != nil {
@@ -255,7 +205,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	}
 	managementasset.SetCurrentConfig(cfg)
 	auth.SetQuotaCooldownDisabled(cfg.DisableCooling)
-	// Initialize management handler
 	s.mgmt = managementHandlers.NewHandler(cfg, configFilePath, authManager)
 	if optionState.localPassword != "" {
 		s.mgmt.SetLocalPassword(optionState.localPassword)
@@ -264,10 +213,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	s.mgmt.SetLogDirectory(logDir)
 	s.localPassword = optionState.localPassword
 
-	// Setup routes
 	s.setupRoutes()
 
-	// Register Amp module using V2 interface with Context
 	s.ampModule = ampmodule.NewLegacy(accessManager, AuthMiddleware(accessManager))
 	ctx := modules.Context{
 		Engine:         engine,
@@ -276,15 +223,13 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		AuthMiddleware: AuthMiddleware(accessManager),
 	}
 	if err := modules.RegisterModule(ctx, s.ampModule); err != nil {
-		log.Errorf("Failed to register Amp module: %v", err)
+		log.Errorf("注册 Amp 模块失败: %v", err)
 	}
 
-	// Apply additional router configurators from options
 	if optionState.routerConfigurator != nil {
 		optionState.routerConfigurator(engine, s.handlers, cfg)
 	}
 
-	// Register management routes when configuration or environment secrets are available.
 	hasManagementSecret := cfg.RemoteManagement.SecretKey != "" || envManagementSecret
 	s.managementRoutesEnabled.Store(hasManagementSecret)
 	if hasManagementSecret {
@@ -295,7 +240,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		s.enableKeepAlive(optionState.keepAliveTimeout, optionState.keepAliveOnTimeout)
 	}
 
-	// Create HTTP server
 	s.server = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Handler: engine,
@@ -304,8 +248,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	return s
 }
 
-// setupRoutes configures the API routes for the server.
-// It defines the endpoints and associates them with their respective handlers.
+// setupRoutes 注册服务端 API 路由及对应处理器。
 func (s *Server) setupRoutes() {
 	s.engine.GET("/management.html", s.serveManagementControlPanel)
 	openaiHandlers := openai.NewOpenAIAPIHandler(s.handlers)
@@ -314,7 +257,6 @@ func (s *Server) setupRoutes() {
 	claudeCodeHandlers := claude.NewClaudeCodeAPIHandler(s.handlers)
 	openaiResponsesHandlers := openai.NewOpenAIResponsesAPIHandler(s.handlers)
 
-	// OpenAI compatible API routes
 	v1 := s.engine.Group("/v1")
 	v1.Use(AuthMiddleware(s.accessManager))
 	{
@@ -327,7 +269,6 @@ func (s *Server) setupRoutes() {
 		v1.POST("/responses/compact", openaiResponsesHandlers.Compact)
 	}
 
-	// Gemini compatible API routes
 	v1beta := s.engine.Group("/v1beta")
 	v1beta.Use(AuthMiddleware(s.accessManager))
 	{
@@ -336,7 +277,6 @@ func (s *Server) setupRoutes() {
 		v1beta.GET("/models/*action", geminiHandlers.GeminiGetHandler)
 	}
 
-	// Root endpoint
 	s.engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "CLI Proxy API Server",
@@ -349,9 +289,6 @@ func (s *Server) setupRoutes() {
 	})
 	s.engine.POST("/v1internal:method", geminiCLIHandlers.CLIHandler)
 
-	// OAuth callback endpoints (reuse main server port)
-	// These endpoints receive provider redirects and persist
-	// the short-lived code/state for the waiting goroutine.
 	s.engine.GET("/anthropic/callback", func(c *gin.Context) {
 		code := c.Query("code")
 		state := c.Query("state")
@@ -422,11 +359,9 @@ func (s *Server) setupRoutes() {
 		c.String(http.StatusOK, oauthCallbackSuccessHTML)
 	})
 
-	// Management routes are registered lazily by registerManagementRoutes when a secret is configured.
 }
 
-// AttachWebsocketRoute registers a websocket upgrade handler on the primary Gin engine.
-// The handler is served as-is without additional middleware beyond the standard stack already configured.
+// AttachWebsocketRoute 在主 Gin Engine 上注册 WebSocket 升级处理逻辑，除已有标准中间件外不再追加。
 func (s *Server) AttachWebsocketRoute(path string, handler http.Handler) {
 	if s == nil || s.engine == nil || handler == nil {
 		return
@@ -470,7 +405,7 @@ func (s *Server) registerManagementRoutes() {
 		return
 	}
 
-	log.Info("management routes registered after secret key configuration")
+	log.Info("已配置密钥，管理路由已注册")
 
 	mgmt := s.engine.Group("/v0/management")
 	mgmt.Use(s.managementAvailabilityMiddleware(), s.mgmt.Middleware())
@@ -655,14 +590,12 @@ func (s *Server) serveManagementControlPanel(c *gin.Context) {
 
 	if _, err := os.Stat(filePath); err != nil {
 		if os.IsNotExist(err) {
-			// Synchronously ensure management.html is available with a detached context.
-			// Control panel bootstrap should not be canceled by client disconnects.
 			if !managementasset.EnsureLatestManagementHTML(context.Background(), managementasset.StaticDir(s.configFilePath), cfg.ProxyURL, cfg.RemoteManagement.PanelGitHubRepository) {
 				c.AbortWithStatus(http.StatusNotFound)
 				return
 			}
 		} else {
-			log.WithError(err).Error("failed to stat management control panel asset")
+			log.WithError(err).Error("获取管理控制面板资源状态失败")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -730,7 +663,7 @@ func (s *Server) watchKeepAlive() {
 	for {
 		select {
 		case <-timer.C:
-			log.Warnf("keep-alive endpoint idle for %s, shutting down", s.keepAliveTimeout)
+			log.Warnf("keep-alive 端点在 %s 内无请求，正在关闭", s.keepAliveTimeout)
 			if s.keepAliveOnTimeout != nil {
 				s.keepAliveOnTimeout()
 			}
@@ -749,10 +682,7 @@ func (s *Server) watchKeepAlive() {
 	}
 }
 
-// unifiedModelsHandler creates a unified handler for the /v1/models endpoint
-// that routes to different handlers based on the User-Agent header.
-// If User-Agent starts with "claude-cli", it routes to Claude handler,
-// otherwise it routes to OpenAI handler.
+// unifiedModelsHandler 为 /v1/models 提供统一入口，按 User-Agent 分流：以 "claude-cli" 开头走 Claude 处理器，否则走 OpenAI 处理器。
 func (s *Server) unifiedModelsHandler(openaiHandler *openai.OpenAIAPIHandler, claudeHandler *claude.ClaudeCodeAPIHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userAgent := c.GetHeader("User-Agent")
@@ -768,14 +698,10 @@ func (s *Server) unifiedModelsHandler(openaiHandler *openai.OpenAIAPIHandler, cl
 	}
 }
 
-// Start begins listening for and serving HTTP or HTTPS requests.
-// It's a blocking call and will only return on an unrecoverable error.
-//
-// Returns:
-//   - error: An error if the server fails to start
+// Start 开始监听并处理 HTTP/HTTPS 请求，阻塞直至发生不可恢复错误。
 func (s *Server) Start() error {
 	if s == nil || s.server == nil {
-		return fmt.Errorf("failed to start HTTP server: server not initialized")
+		return fmt.Errorf("HTTP 服务未初始化，无法启动")
 	}
 
 	useTLS := s.cfg != nil && s.cfg.TLS.Enable
@@ -783,33 +709,26 @@ func (s *Server) Start() error {
 		cert := strings.TrimSpace(s.cfg.TLS.Cert)
 		key := strings.TrimSpace(s.cfg.TLS.Key)
 		if cert == "" || key == "" {
-			return fmt.Errorf("failed to start HTTPS server: tls.cert or tls.key is empty")
+			return fmt.Errorf("启用 HTTPS 失败: tls.cert 或 tls.key 为空")
 		}
-		log.Debugf("Starting API server on %s with TLS", s.server.Addr)
+		log.Debugf("API 服务正在 %s 以 TLS 方式启动", s.server.Addr)
 		if errServeTLS := s.server.ListenAndServeTLS(cert, key); errServeTLS != nil && !errors.Is(errServeTLS, http.ErrServerClosed) {
-			return fmt.Errorf("failed to start HTTPS server: %v", errServeTLS)
+			return fmt.Errorf("启动 HTTPS 服务失败: %v", errServeTLS)
 		}
 		return nil
 	}
 
-	log.Debugf("Starting API server on %s", s.server.Addr)
+	log.Debugf("API 服务正在 %s 启动", s.server.Addr)
 	if errServe := s.server.ListenAndServe(); errServe != nil && !errors.Is(errServe, http.ErrServerClosed) {
-		return fmt.Errorf("failed to start HTTP server: %v", errServe)
+		return fmt.Errorf("启动 HTTP 服务失败: %v", errServe)
 	}
 
 	return nil
 }
 
-// Stop gracefully shuts down the API server without interrupting any
-// active connections.
-//
-// Parameters:
-//   - ctx: The context for graceful shutdown
-//
-// Returns:
-//   - error: An error if the server fails to stop
+// Stop 优雅关闭 API 服务，不中断已有连接。
 func (s *Server) Stop(ctx context.Context) error {
-	log.Debug("Stopping API server...")
+	log.Debug("正在停止 API 服务...")
 
 	if s.keepAliveEnabled {
 		select {
@@ -818,20 +737,15 @@ func (s *Server) Stop(ctx context.Context) error {
 		}
 	}
 
-	// Shutdown the HTTP server.
 	if err := s.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("failed to shutdown HTTP server: %v", err)
+		return fmt.Errorf("关闭 HTTP 服务失败: %v", err)
 	}
 
-	log.Debug("API server stopped")
+	log.Debug("API 服务已停止")
 	return nil
 }
 
-// corsMiddleware returns a Gin middleware handler that adds CORS headers
-// to every response, allowing cross-origin requests.
-//
-// Returns:
-//   - gin.HandlerFunc: The CORS middleware handler
+// corsMiddleware 返回为响应添加 CORS 头的 Gin 中间件，允许跨域请求。
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
@@ -856,20 +770,13 @@ func (s *Server) applyAccessConfig(oldCfg, newCfg *config.Config) {
 	}
 }
 
-// UpdateClients updates the server's client list and configuration.
-// This method is called when the configuration or authentication tokens change.
-//
-// Parameters:
-//   - clients: The new slice of AI service clients
-//   - cfg: The new application configuration
+// UpdateClients 在配置或认证令牌变更时更新服务的客户端列表与配置。
 func (s *Server) UpdateClients(cfg *config.Config) {
-	// Reconstruct old config from YAML snapshot to avoid reference sharing issues
 	var oldCfg *config.Config
 	if len(s.oldConfigYaml) > 0 {
 		_ = yaml.Unmarshal(s.oldConfigYaml, &oldCfg)
 	}
 
-	// Update request logger enabled state if it has changed
 	previousRequestLog := false
 	if oldCfg != nil {
 		previousRequestLog = oldCfg.RequestLog
@@ -884,7 +791,7 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 
 	if oldCfg == nil || oldCfg.LoggingToFile != cfg.LoggingToFile || oldCfg.LogsMaxTotalSizeMB != cfg.LogsMaxTotalSizeMB {
 		if err := logging.ConfigureLogOutput(cfg); err != nil {
-			log.Errorf("failed to reconfigure log output: %v", err)
+			log.Errorf("重新配置日志输出失败: %v", err)
 		}
 	}
 
@@ -906,7 +813,6 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 		s.handlers.AuthManager.SetRetryConfig(cfg.RequestRetry, time.Duration(cfg.MaxRetryInterval)*time.Second)
 	}
 
-	// Update log level dynamically when debug flag changes
 	if oldCfg == nil || oldCfg.Debug != cfg.Debug {
 		util.SetLogLevel(cfg)
 	}
@@ -919,7 +825,7 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 	if s.envManagementSecret {
 		s.registerManagementRoutes()
 		if s.managementRoutesEnabled.CompareAndSwap(false, true) {
-			log.Info("management routes enabled via MANAGEMENT_PASSWORD")
+			log.Info("已通过 MANAGEMENT_PASSWORD 启用管理路由")
 		} else {
 			s.managementRoutesEnabled.Store(true)
 		}
@@ -928,13 +834,13 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 		case prevSecretEmpty && !newSecretEmpty:
 			s.registerManagementRoutes()
 			if s.managementRoutesEnabled.CompareAndSwap(false, true) {
-				log.Info("management routes enabled after secret key update")
+				log.Info("更新密钥后已启用管理路由")
 			} else {
 				s.managementRoutesEnabled.Store(true)
 			}
 		case !prevSecretEmpty && newSecretEmpty:
 			if s.managementRoutesEnabled.CompareAndSwap(true, false) {
-				log.Info("management routes disabled after secret key removal")
+				log.Info("移除密钥后已关闭管理路由")
 			} else {
 				s.managementRoutesEnabled.Store(false)
 			}
@@ -950,7 +856,6 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 		s.wsAuthChanged(oldCfg.WebsocketAuth, cfg.WebsocketAuth)
 	}
 	managementasset.SetCurrentConfig(cfg)
-	// Save YAML snapshot for next comparison
 	s.oldConfigYaml, _ = yaml.Marshal(cfg)
 
 	s.handlers.UpdateClients(&cfg.SDKConfig)
@@ -960,20 +865,18 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 		s.mgmt.SetAuthManager(s.handlers.AuthManager)
 	}
 
-	// Notify Amp module only when Amp config has changed.
 	ampConfigChanged := oldCfg == nil || !reflect.DeepEqual(oldCfg.AmpCode, cfg.AmpCode)
 	if ampConfigChanged {
 		if s.ampModule != nil {
-			log.Debugf("triggering amp module config update")
+			log.Debugf("触发 Amp 模块配置更新")
 			if err := s.ampModule.OnConfigUpdated(cfg); err != nil {
-				log.Errorf("failed to update Amp module config: %v", err)
+				log.Errorf("更新 Amp 模块配置失败: %v", err)
 			}
 		} else {
-			log.Warnf("amp module is nil, skipping config update")
+			log.Warnf("Amp 模块为 nil，跳过配置更新")
 		}
 	}
 
-	// Count client sources from configuration and auth store.
 	tokenStore := sdkAuth.GetTokenStore()
 	if dirSetter, ok := tokenStore.(interface{ SetBaseDir(string) }); ok {
 		dirSetter.SetBaseDir(cfg.AuthDir)
@@ -990,7 +893,7 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 	}
 
 	total := authEntries + geminiAPIKeyCount + claudeAPIKeyCount + codexAPIKeyCount + vertexAICompatCount + openAICompatCount
-	fmt.Printf("server clients and configuration updated: %d clients (%d auth entries + %d Gemini API keys + %d Claude API keys + %d Codex keys + %d Vertex-compat + %d OpenAI-compat)\n",
+	fmt.Printf("服务端客户端与配置已更新: 共 %d 个客户端（%d 认证条目 + %d Gemini API 密钥 + %d Claude API 密钥 + %d Codex 密钥 + %d Vertex 兼容 + %d OpenAI 兼容）\n",
 		total,
 		authEntries,
 		geminiAPIKeyCount,
@@ -1008,11 +911,7 @@ func (s *Server) SetWebsocketAuthChangeHandler(fn func(bool, bool)) {
 	s.wsAuthChanged = fn
 }
 
-// (management handlers moved to internal/api/handlers/management)
-
-// AuthMiddleware returns a Gin middleware handler that authenticates requests
-// using the configured authentication providers. When no providers are available,
-// it allows all requests (legacy behaviour).
+// AuthMiddleware 返回基于已配置认证提供方校验请求的 Gin 中间件；无提供方时放行所有请求（兼容旧行为）。
 func AuthMiddleware(manager *sdkaccess.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if manager == nil {
@@ -1035,7 +934,7 @@ func AuthMiddleware(manager *sdkaccess.Manager) gin.HandlerFunc {
 
 		statusCode := err.HTTPStatusCode()
 		if statusCode >= http.StatusInternalServerError {
-			log.Errorf("authentication middleware error: %v", err)
+			log.Errorf("认证中间件错误: %v", err)
 		}
 		c.AbortWithStatusJSON(statusCode, gin.H{"error": err.Message})
 	}

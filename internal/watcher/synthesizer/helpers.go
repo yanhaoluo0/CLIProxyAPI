@@ -12,20 +12,17 @@ import (
 	coreauth "github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy/auth"
 )
 
-// StableIDGenerator generates stable, deterministic IDs for auth entries.
-// It uses SHA256 hashing with collision handling via counters.
-// It is not safe for concurrent use.
+// StableIDGenerator 使用 SHA256 哈希与计数器冲突处理，生成 Auth 条目稳定且确定性的 ID。
 type StableIDGenerator struct {
 	counters map[string]int
 }
 
-// NewStableIDGenerator creates a new StableIDGenerator instance.
+// NewStableIDGenerator 创建新的 StableIDGenerator 实例。
 func NewStableIDGenerator() *StableIDGenerator {
 	return &StableIDGenerator{counters: make(map[string]int)}
 }
 
-// Next generates a stable ID based on the kind and parts.
-// Returns the full ID (kind:hash) and the short hash portion.
+// Next 基于种类与部分生成稳定 ID，返回完整 ID（kind:hash）与短哈希部分。
 func (g *StableIDGenerator) Next(kind string, parts ...string) (string, string) {
 	if g == nil {
 		return kind + ":000000000000", "000000000000"
@@ -103,8 +100,7 @@ func ApplyAuthExcludedModelsMeta(auth *coreauth.Auth, cfg *config.Config, perKey
 	}
 }
 
-// addConfigHeadersToAttrs adds header configuration to auth attributes.
-// Headers are prefixed with "header:" in the attributes map.
+// addConfigHeadersToAttrs 将头配置添加到认证属性，头属性在属性值中以 "header:" 为前缀。
 func addConfigHeadersToAttrs(headers map[string]string, attrs map[string]string) {
 	if len(headers) == 0 || attrs == nil {
 		return

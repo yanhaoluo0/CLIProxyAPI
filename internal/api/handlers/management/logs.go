@@ -22,7 +22,7 @@ const (
 	logScannerMaxBuffer     = 8 * 1024 * 1024
 )
 
-// GetLogs returns log lines with optional incremental loading.
+// GetLogs 返回日志行，支持可选增量加载。
 func (h *Handler) GetLogs(c *gin.Context) {
 	if h == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "handler unavailable"})
@@ -84,7 +84,7 @@ func (h *Handler) GetLogs(c *gin.Context) {
 	})
 }
 
-// DeleteLogs removes all rotated log files and truncates the active log.
+// DeleteLogs 删除所有轮转日志文件并清空当前活动日志。
 func (h *Handler) DeleteLogs(c *gin.Context) {
 	if h == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "handler unavailable"})
@@ -145,8 +145,7 @@ func (h *Handler) DeleteLogs(c *gin.Context) {
 	})
 }
 
-// GetRequestErrorLogs lists error request log files when RequestLog is disabled.
-// It returns an empty list when RequestLog is enabled.
+// GetRequestErrorLogs 在 RequestLog 关闭时列出错误请求日志文件；开启时返回空列表。
 func (h *Handler) GetRequestErrorLogs(c *gin.Context) {
 	if h == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "handler unavailable"})
@@ -209,8 +208,7 @@ func (h *Handler) GetRequestErrorLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"files": files})
 }
 
-// GetRequestLogByID finds and downloads a request log file by its request ID.
-// The ID is matched against the suffix of log file names (format: *-{requestID}.log).
+// GetRequestLogByID 按请求 ID 查找并下载请求日志文件，ID 与日志文件名后缀 *-{requestID}.log 匹配。
 func (h *Handler) GetRequestLogByID(c *gin.Context) {
 	if h == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "handler unavailable"})
@@ -297,7 +295,7 @@ func (h *Handler) GetRequestLogByID(c *gin.Context) {
 	c.FileAttachment(fullPath, matchedFile)
 }
 
-// DownloadRequestErrorLog downloads a specific error request log file by name.
+// DownloadRequestErrorLog 按文件名下载指定的错误请求日志文件。
 func (h *Handler) DownloadRequestErrorLog(c *gin.Context) {
 	if h == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "handler unavailable"})
@@ -494,10 +492,10 @@ func parseLimit(raw string) (int, error) {
 	}
 	limit, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("must be a positive integer")
+		return 0, fmt.Errorf("必须为正整数")
 	}
 	if limit <= 0 {
-		return 0, fmt.Errorf("must be greater than zero")
+		return 0, fmt.Errorf("必须大于零")
 	}
 	return limit, nil
 }

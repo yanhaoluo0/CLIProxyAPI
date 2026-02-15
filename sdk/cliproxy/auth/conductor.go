@@ -24,7 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// ProviderExecutor defines the contract required by Manager to execute provider calls.
+// ProviderExecutor 定义 Manager 执行提供方调用所需的契约。
 type ProviderExecutor interface {
 	// Identifier returns the provider key handled by this executor.
 	Identifier() string
@@ -41,7 +41,7 @@ type ProviderExecutor interface {
 	HttpRequest(ctx context.Context, auth *Auth, req *http.Request) (*http.Response, error)
 }
 
-// RefreshEvaluator allows runtime state to override refresh decisions.
+// RefreshEvaluator 允许运行时状态覆盖刷新决策。
 type RefreshEvaluator interface {
 	ShouldRefresh(now time.Time, auth *Auth) bool
 }
@@ -56,7 +56,7 @@ const (
 
 var quotaCooldownDisabled atomic.Bool
 
-// SetQuotaCooldownDisabled toggles quota cooldown scheduling globally.
+// SetQuotaCooldownDisabled 全局切换配额冷却调度。
 func SetQuotaCooldownDisabled(disable bool) {
 	quotaCooldownDisabled.Store(disable)
 }
@@ -70,7 +70,7 @@ func quotaCooldownDisabledForAuth(auth *Auth) bool {
 	return quotaCooldownDisabled.Load()
 }
 
-// Result captures execution outcome used to adjust auth state.
+// Result 捕获用于调整认证状态的执行结果。
 type Result struct {
 	// AuthID references the auth that produced this result.
 	AuthID string
@@ -86,12 +86,12 @@ type Result struct {
 	Error *Error
 }
 
-// Selector chooses an auth candidate for execution.
+// Selector 为执行选择一个认证候选。
 type Selector interface {
 	Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*Auth) (*Auth, error)
 }
 
-// Hook captures lifecycle callbacks for observing auth changes.
+// Hook 捕获生命周期回调以观察认证变更。
 type Hook interface {
 	// OnAuthRegistered fires when a new auth is registered.
 	OnAuthRegistered(ctx context.Context, auth *Auth)
@@ -101,19 +101,19 @@ type Hook interface {
 	OnResult(ctx context.Context, result Result)
 }
 
-// NoopHook provides optional hook defaults.
+// NoopHook 提供可选的钩子默认值。
 type NoopHook struct{}
 
-// OnAuthRegistered implements Hook.
+// OnAuthRegistered 实现 Hook。
 func (NoopHook) OnAuthRegistered(context.Context, *Auth) {}
 
-// OnAuthUpdated implements Hook.
+// OnAuthUpdated 实现 Hook。
 func (NoopHook) OnAuthUpdated(context.Context, *Auth) {}
 
-// OnResult implements Hook.
+// OnResult 实现 Hook。
 func (NoopHook) OnResult(context.Context, Result) {}
 
-// Manager orchestrates auth lifecycle, selection, execution, and persistence.
+// Manager 编排认证生命周期、选择、执行与持久化。
 type Manager struct {
 	store     Store
 	executors map[string]ProviderExecutor
@@ -146,7 +146,7 @@ type Manager struct {
 	refreshCancel context.CancelFunc
 }
 
-// NewManager constructs a manager with optional custom selector and hook.
+// NewManager 使用可选自定义选择器与钩子构造管理器。
 func NewManager(store Store, selector Selector, hook Hook) *Manager {
 	if selector == nil {
 		selector = &RoundRobinSelector{}
@@ -180,22 +180,21 @@ func (m *Manager) SetSelector(selector Selector) {
 	m.mu.Unlock()
 }
 
-// SetStore swaps the underlying persistence store.
+// SetStore 交换底层持久化存储。
 func (m *Manager) SetStore(store Store) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.store = store
 }
 
-// SetRoundTripperProvider register a provider that returns a per-auth RoundTripper.
+// SetRoundTripperProvider 注册返回每认证 RoundTripper 的提供方。
 func (m *Manager) SetRoundTripperProvider(p RoundTripperProvider) {
 	m.mu.Lock()
 	m.rtProvider = p
 	m.mu.Unlock()
 }
 
-// SetConfig updates the runtime config snapshot used by request-time helpers.
-// Callers should provide the latest config on reload so per-credential alias mapping stays in sync.
+// SetConfig 更新请求时辅助方法使用的运行时配置快照，调用方应在 reload 时提供最新配置以保持每凭证别名映射同步。
 func (m *Manager) SetConfig(cfg *internalconfig.Config) {
 	if m == nil {
 		return
@@ -369,7 +368,7 @@ func compileAPIKeyModelAliasForModels[T interface {
 	}
 }
 
-// SetRetryConfig updates retry attempts and cooldown wait interval.
+// SetRetryConfig 更新重试次数与冷却等待间隔。
 func (m *Manager) SetRetryConfig(retry int, maxRetryInterval time.Duration) {
 	if m == nil {
 		return
@@ -384,7 +383,7 @@ func (m *Manager) SetRetryConfig(retry int, maxRetryInterval time.Duration) {
 	m.maxRetryInterval.Store(maxRetryInterval.Nanoseconds())
 }
 
-// RegisterExecutor registers a provider executor with the manager.
+// RegisterExecutor 向管理器注册提供方执行器。
 func (m *Manager) RegisterExecutor(executor ProviderExecutor) {
 	if executor == nil {
 		return
@@ -394,7 +393,7 @@ func (m *Manager) RegisterExecutor(executor ProviderExecutor) {
 	m.executors[executor.Identifier()] = executor
 }
 
-// UnregisterExecutor removes the executor associated with the provider key.
+// UnregisterExecutor 移除与提供方 key 关联的执行器。
 func (m *Manager) UnregisterExecutor(provider string) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	if provider == "" {
@@ -405,7 +404,7 @@ func (m *Manager) UnregisterExecutor(provider string) {
 	m.mu.Unlock()
 }
 
-// Register inserts a new auth entry into the manager.
+// Register 向管理器插入新认证条目。
 func (m *Manager) Register(ctx context.Context, auth *Auth) (*Auth, error) {
 	if auth == nil {
 		return nil, nil
@@ -423,7 +422,7 @@ func (m *Manager) Register(ctx context.Context, auth *Auth) (*Auth, error) {
 	return auth.Clone(), nil
 }
 
-// Update replaces an existing auth entry and notifies hooks.
+// Update 替换现有认证条目并通知钩子。
 func (m *Manager) Update(ctx context.Context, auth *Auth) (*Auth, error) {
 	if auth == nil || auth.ID == "" {
 		return nil, nil
@@ -442,7 +441,7 @@ func (m *Manager) Update(ctx context.Context, auth *Auth) (*Auth, error) {
 	return auth.Clone(), nil
 }
 
-// Load resets manager state from the backing store.
+// Load 从后备存储重置管理器状态。
 func (m *Manager) Load(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -469,8 +468,7 @@ func (m *Manager) Load(ctx context.Context) error {
 	return nil
 }
 
-// Execute performs a non-streaming execution using the configured selector and executor.
-// It supports multiple providers for the same model and round-robins the starting provider per model.
+// Execute 使用配置的选择器与执行器执行非流式，支持同一模型多个提供方并按模型轮询起始提供方。
 func (m *Manager) Execute(ctx context.Context, providers []string, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	normalized := m.normalizeProviders(providers)
 	if len(normalized) == 0 {
@@ -500,8 +498,7 @@ func (m *Manager) Execute(ctx context.Context, providers []string, req cliproxye
 	return cliproxyexecutor.Response{}, &Error{Code: "auth_not_found", Message: "no auth available"}
 }
 
-// ExecuteCount performs a non-streaming execution using the configured selector and executor.
-// It supports multiple providers for the same model and round-robins the starting provider per model.
+// ExecuteCount 使用配置的选择器与执行器执行非流式执行，支持同一模型多个提供方并按模型轮询起始提供方。
 func (m *Manager) ExecuteCount(ctx context.Context, providers []string, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	normalized := m.normalizeProviders(providers)
 	if len(normalized) == 0 {
@@ -531,8 +528,7 @@ func (m *Manager) ExecuteCount(ctx context.Context, providers []string, req clip
 	return cliproxyexecutor.Response{}, &Error{Code: "auth_not_found", Message: "no auth available"}
 }
 
-// ExecuteStream performs a streaming execution using the configured selector and executor.
-// It supports multiple providers for the same model and round-robins the starting provider per model.
+// ExecuteStream 使用配置的选择器与执行器执行流式，支持同一模型多个提供方并按模型轮询起始提供方。
 func (m *Manager) ExecuteStream(ctx context.Context, providers []string, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (<-chan cliproxyexecutor.StreamChunk, error) {
 	normalized := m.normalizeProviders(providers)
 	if len(normalized) == 0 {
@@ -858,7 +854,7 @@ func (m *Manager) applyAPIKeyModelAlias(auth *Auth, requestedModel string) strin
 	return requestedModel
 }
 
-// APIKeyConfigEntry is a generic interface for API key configurations.
+// APIKeyConfigEntry 是 API key 配置的通用接口。
 type APIKeyConfigEntry interface {
 	GetAPIKey() string
 	GetBaseURL() string
@@ -1139,7 +1135,7 @@ func waitForCooldown(ctx context.Context, wait time.Duration) error {
 	}
 }
 
-// MarkResult records an execution result and notifies hooks.
+// MarkResult 记录执行结果并通知钩子。
 func (m *Manager) MarkResult(ctx context.Context, result Result) {
 	if result.AuthID == "" {
 		return
@@ -1437,10 +1433,7 @@ func statusCodeFromResult(err *Error) int {
 	return err.StatusCode()
 }
 
-// isRequestInvalidError returns true if the error represents a client request
-// error that should not be retried. Specifically, it checks for 400 Bad Request
-// with "invalid_request_error" in the message, indicating the request itself is
-// malformed and switching to a different auth will not help.
+// isRequestInvalidError 如果错误表示不应重试的客户端请求错误则返回 true；具体检查 400 Bad Request 且消息中含 "invalid_request_error"，表示请求本身格式错误，切换其他认证无济于事。
 func isRequestInvalidError(err error) bool {
 	if err == nil {
 		return false
@@ -1506,7 +1499,7 @@ func applyAuthFailureState(auth *Auth, resultErr *Error, retryAfter *time.Durati
 	}
 }
 
-// nextQuotaCooldown returns the next cooldown duration and updated backoff level for repeated quota errors.
+// nextQuotaCooldown 返回重复配额错误的下一冷却时长与更新后的退避级别。
 func nextQuotaCooldown(prevLevel int, disableCooling bool) (time.Duration, int) {
 	if prevLevel < 0 {
 		prevLevel = 0
@@ -1524,7 +1517,7 @@ func nextQuotaCooldown(prevLevel int, disableCooling bool) (time.Duration, int) 
 	return cooldown, prevLevel + 1
 }
 
-// List returns all auth entries currently known by the manager.
+// List 返回管理器当前已知的所有认证条目。
 func (m *Manager) List() []*Auth {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -1535,7 +1528,7 @@ func (m *Manager) List() []*Auth {
 	return list
 }
 
-// GetByID retrieves an auth entry by its ID.
+// GetByID 按 ID 获取认证条目。
 
 func (m *Manager) GetByID(id string) (*Auth, bool) {
 	if id == "" {
@@ -1715,9 +1708,7 @@ func (m *Manager) persist(ctx context.Context, auth *Auth) error {
 	return err
 }
 
-// StartAutoRefresh launches a background loop that evaluates auth freshness
-// every few seconds and triggers refresh operations when required.
-// Only one loop is kept alive; starting a new one cancels the previous run.
+// StartAutoRefresh 启动后台循环，每几秒评估认证新鲜度并在需要时触发刷新，仅保活一个循环，新启动会取消前一次运行。
 func (m *Manager) StartAutoRefresh(parent context.Context, interval time.Duration) {
 	if interval <= 0 || interval > refreshCheckInterval {
 		interval = refreshCheckInterval
@@ -1745,7 +1736,7 @@ func (m *Manager) StartAutoRefresh(parent context.Context, interval time.Duratio
 	}()
 }
 
-// StopAutoRefresh cancels the background refresh loop, if running.
+// StopAutoRefresh 取消后台刷新循环（若在运行）。
 func (m *Manager) StopAutoRefresh() {
 	if m.refreshCancel != nil {
 		m.refreshCancel()
@@ -1763,7 +1754,7 @@ func (m *Manager) checkRefreshes(ctx context.Context) {
 			if !m.shouldRefresh(a, now) {
 				continue
 			}
-			log.Debugf("checking refresh for %s, %s, %s", a.Provider, a.ID, typ)
+			log.Debugf("检查刷新 %s, %s, %s", a.Provider, a.ID, typ)
 
 			if exec := m.executorFor(a.Provider); exec == nil {
 				continue
@@ -2023,10 +2014,10 @@ func (m *Manager) refreshAuth(ctx context.Context, id string) {
 	cloned := auth.Clone()
 	updated, err := exec.Refresh(ctx, cloned)
 	if err != nil && errors.Is(err, context.Canceled) {
-		log.Debugf("refresh canceled for %s, %s", auth.Provider, auth.ID)
+		log.Debugf("已取消刷新 %s, %s", auth.Provider, auth.ID)
 		return
 	}
-	log.Debugf("refreshed %s, %s, %v", auth.Provider, auth.ID, err)
+	log.Debugf("已刷新 %s, %s, %v", auth.Provider, auth.ID, err)
 	now := time.Now()
 	if err != nil {
 		m.mu.Lock()
@@ -2059,10 +2050,10 @@ func (m *Manager) executorFor(provider string) ProviderExecutor {
 	return m.executors[provider]
 }
 
-// roundTripperContextKey is an unexported context key type to avoid collisions.
+// roundTripperContextKey 是未导出的上下文 key 类型以避免冲突。
 type roundTripperContextKey struct{}
 
-// roundTripperFor retrieves an HTTP RoundTripper for the given auth if a provider is registered.
+// roundTripperFor 若已注册提供方则返回给定 auth 的 HTTP RoundTripper。
 func (m *Manager) roundTripperFor(auth *Auth) http.RoundTripper {
 	m.mu.RLock()
 	p := m.rtProvider
@@ -2073,13 +2064,12 @@ func (m *Manager) roundTripperFor(auth *Auth) http.RoundTripper {
 	return p.RoundTripperFor(auth)
 }
 
-// RoundTripperProvider defines a minimal provider of per-auth HTTP transports.
+// RoundTripperProvider 定义每认证 HTTP 传输的最小提供方接口。
 type RoundTripperProvider interface {
 	RoundTripperFor(auth *Auth) http.RoundTripper
 }
 
-// RequestPreparer is an optional interface that provider executors can implement
-// to mutate outbound HTTP requests with provider credentials.
+// RequestPreparer 是可选接口，提供方执行器可实现以修改出站 HTTP 请求。
 type RequestPreparer interface {
 	PrepareRequest(req *http.Request, auth *Auth) error
 }
@@ -2101,7 +2091,7 @@ func executorKeyFromAuth(auth *Auth) string {
 	return strings.ToLower(strings.TrimSpace(auth.Provider))
 }
 
-// logEntryWithRequestID returns a logrus entry with request_id field if available in context.
+// logEntryWithRequestID 若上下文中有 request_id 则返回带该字段的 logrus 条目。
 func logEntryWithRequestID(ctx context.Context) *log.Entry {
 	if ctx == nil {
 		return log.NewEntry(log.StandardLogger())
@@ -2165,9 +2155,7 @@ func formatOauthIdentity(auth *Auth, provider string, accountInfo string) string
 	return strings.Join(parts, " ")
 }
 
-// InjectCredentials delegates per-provider HTTP request preparation when supported.
-// If the registered executor for the auth provider implements RequestPreparer,
-// it will be invoked to modify the request (e.g., add headers).
+// InjectCredentials 当支持时委托每提供方 HTTP 请求准备，若已注册的执行器实现 RequestPreparer，则调用它修改请求（如添加头）。
 func (m *Manager) InjectCredentials(req *http.Request, authID string) error {
 	if req == nil || authID == "" {
 		return nil
@@ -2188,7 +2176,7 @@ func (m *Manager) InjectCredentials(req *http.Request, authID string) error {
 	return nil
 }
 
-// PrepareHttpRequest injects provider credentials into the supplied HTTP request.
+// PrepareHttpRequest 将提供方凭证注入提供的 HTTP 请求。
 func (m *Manager) PrepareHttpRequest(ctx context.Context, auth *Auth, req *http.Request) error {
 	if m == nil {
 		return &Error{Code: "provider_not_found", Message: "manager is nil"}
@@ -2217,7 +2205,7 @@ func (m *Manager) PrepareHttpRequest(ctx context.Context, auth *Auth, req *http.
 	return preparer.PrepareRequest(req, auth)
 }
 
-// NewHttpRequest constructs a new HTTP request and injects provider credentials into it.
+// NewHttpRequest 构造新 HTTP 请求并将提供方凭证注入。
 func (m *Manager) NewHttpRequest(ctx context.Context, auth *Auth, method, targetURL string, body []byte, headers http.Header) (*http.Request, error) {
 	if ctx == nil {
 		ctx = context.Background()

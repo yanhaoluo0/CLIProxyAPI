@@ -55,9 +55,7 @@ func compileOAuthModelAliasTable(aliases map[string][]internalconfig.OAuthModelA
 	return out
 }
 
-// SetOAuthModelAlias updates the OAuth model name alias table used during execution.
-// The alias is applied per-auth channel to resolve the upstream model name while keeping the
-// client-visible model name unchanged for translation/response formatting.
+// SetOAuthModelAlias 更新执行期间使用的 OAuth 模型名别名表，别名按认证通道应用以解析上游模型名，同时保持客户端可见模型名不变以供翻译/响应格式化。
 func (m *Manager) SetOAuthModelAlias(aliases map[string][]internalconfig.OAuthModelAlias) {
 	if m == nil {
 		return
@@ -70,8 +68,7 @@ func (m *Manager) SetOAuthModelAlias(aliases map[string][]internalconfig.OAuthMo
 	m.oauthModelAlias.Store(table)
 }
 
-// applyOAuthModelAlias resolves the upstream model from OAuth model alias.
-// If an alias exists, the returned model is the upstream model.
+// applyOAuthModelAlias 从 OAuth 模型别名解析上游模型，若存在别名返回上游模型。
 func (m *Manager) applyOAuthModelAlias(auth *Auth, requestedModel string) string {
 	upstreamModel := m.resolveOAuthUpstreamModel(auth, requestedModel)
 	if upstreamModel == "" {
@@ -131,13 +128,9 @@ func resolveModelAliasFromConfigModels(requestedModel string, models []modelAlia
 	return ""
 }
 
-// resolveOAuthUpstreamModel resolves the upstream model name from OAuth model alias.
-// If an alias exists, returns the original (upstream) model name that corresponds
-// to the requested alias.
+// resolveOAuthUpstreamModel 从 OAuth 模型别名解析上游模型名，若存在别名返回请求别名对应的原始（上游）模型名。
 //
-// If the requested model contains a thinking suffix (e.g., "gemini-2.5-pro(8192)"),
-// the suffix is preserved in the returned model name. However, if the alias's
-// original name already contains a suffix, the config suffix takes priority.
+// 若请求模型含 thinking 后缀（如 "gemini-2.5-pro(8192)"，后缀保留在返回模型名中；但若别名原始名已含后缀，配置后缀优先。
 func (m *Manager) resolveOAuthUpstreamModel(auth *Auth, requestedModel string) string {
 	return resolveUpstreamModelFromAliasTable(m, auth, requestedModel, modelAliasChannel(auth))
 }
@@ -197,9 +190,7 @@ func resolveUpstreamModelFromAliasTable(m *Manager, auth *Auth, requestedModel, 
 	return ""
 }
 
-// modelAliasChannel extracts the OAuth model alias channel from an Auth object.
-// It determines the provider and auth kind from the Auth's attributes and delegates
-// to OAuthModelAliasChannel for the actual channel resolution.
+// modelAliasChannel 从 Auth 对象提取 OAuth 模型别名通道，从 Auth 属性确定提供方与认证类型并委托 OAuthModelAliasChannel 进行实际通道解析。
 func modelAliasChannel(auth *Auth) string {
 	if auth == nil {
 		return ""
@@ -217,11 +208,7 @@ func modelAliasChannel(auth *Auth) string {
 	return OAuthModelAliasChannel(provider, authKind)
 }
 
-// OAuthModelAliasChannel returns the OAuth model alias channel name for a given provider
-// and auth kind. Returns empty string if the provider/authKind combination doesn't support
-// OAuth model alias (e.g., API key authentication).
-//
-// Supported channels: gemini-cli, vertex, aistudio, antigravity, claude, codex, qwen, iflow, kimi.
+// OAuthModelAliasChannel 返回给定提供方与认证类型的 OAuth 模型别名通道名，若提供方/认证类型组合不支持 OAuth 模型别名（如 API key 认证）则返回空字符串。
 func OAuthModelAliasChannel(provider, authKind string) string {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	authKind = strings.ToLower(strings.TrimSpace(authKind))

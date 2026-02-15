@@ -1,4 +1,4 @@
-// Package gemini implements thinking configuration for Gemini models.
+// Package gemini 为 Gemini 模型实现 thinking 配置。
 //
 // Gemini models have two formats:
 //   - Gemini 2.5: Uses thinkingBudget (numeric)

@@ -9,7 +9,7 @@ import (
 	sdkconfig "github.com/router-for-me/CLIProxyAPI/v6/sdk/config"
 )
 
-// Register ensures the config-access provider is available to the access manager.
+// Register 确保 config-access 提供方对访问管理器可用。
 func Register(cfg *sdkconfig.SDKConfig) {
 	if cfg == nil {
 		sdkaccess.UnregisterProvider(sdkaccess.AccessProviderTypeConfigAPIKey)

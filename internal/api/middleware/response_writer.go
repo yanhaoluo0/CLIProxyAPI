@@ -1,6 +1,4 @@
-// Package middleware provides Gin HTTP middleware for the CLI Proxy API server.
-// It includes a sophisticated response writer wrapper designed to capture and log request and response data,
-// including support for streaming responses, without impacting latency.
+// Package middleware 提供 CLI Proxy API 的 Gin HTTP 中间件，含可采集并记录请求/响应（含流式）的 ResponseWriter 封装，不增加延迟。
 package middleware
 
 import (
@@ -14,43 +12,33 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/logging"
 )
 
-// RequestInfo holds essential details of an incoming HTTP request for logging purposes.
+// RequestInfo 保存入站 HTTP 请求的关键信息，用于日志。
 type RequestInfo struct {
-	URL       string              // URL is the request URL.
-	Method    string              // Method is the HTTP method (e.g., GET, POST).
-	Headers   map[string][]string // Headers contains the request headers.
-	Body      []byte              // Body is the raw request body.
-	RequestID string              // RequestID is the unique identifier for the request.
-	Timestamp time.Time           // Timestamp is when the request was received.
+	URL       string              // 请求 URL
+	Method    string              // HTTP 方法（如 GET、POST）
+	Headers   map[string][]string // 请求头
+	Body      []byte              // 原始请求体
+	RequestID string              // 请求唯一标识
+	Timestamp time.Time           // 请求接收时间
 }
 
-// ResponseWriterWrapper wraps the standard gin.ResponseWriter to intercept and log response data.
-// It is designed to handle both standard and streaming responses, ensuring that logging operations do not block the client response.
+// ResponseWriterWrapper 封装 gin.ResponseWriter，拦截并记录响应；支持普通与流式响应，日志不阻塞客户端。
 type ResponseWriterWrapper struct {
 	gin.ResponseWriter
-	body                *bytes.Buffer              // body is a buffer to store the response body for non-streaming responses.
-	isStreaming         bool                       // isStreaming indicates whether the response is a streaming type (e.g., text/event-stream).
-	streamWriter        logging.StreamingLogWriter // streamWriter is a writer for handling streaming log entries.
-	chunkChannel        chan []byte                // chunkChannel is a channel for asynchronously passing response chunks to the logger.
-	streamDone          chan struct{}              // streamDone signals when the streaming goroutine completes.
-	logger              logging.RequestLogger      // logger is the instance of the request logger service.
-	requestInfo         *RequestInfo               // requestInfo holds the details of the original request.
-	statusCode          int                        // statusCode stores the HTTP status code of the response.
-	headers             map[string][]string        // headers stores the response headers.
-	logOnErrorOnly      bool                       // logOnErrorOnly enables logging only when an error response is detected.
-	firstChunkTimestamp time.Time                  // firstChunkTimestamp captures TTFB for streaming responses.
+	body                *bytes.Buffer              // 非流式响应的体缓冲
+	isStreaming         bool                       // 是否为流式（如 text/event-stream）
+	streamWriter        logging.StreamingLogWriter // 流式日志写入器
+	chunkChannel        chan []byte                // 异步向日志传递响应块的通道
+	streamDone          chan struct{}              // 流式 goroutine 完成信号
+	logger              logging.RequestLogger      // 请求日志服务实例
+	requestInfo         *RequestInfo               // 原始请求信息
+	statusCode          int                        // 响应状态码
+	headers             map[string][]string        // 响应头
+	logOnErrorOnly      bool                       // 仅在有错误响应时记录
+	firstChunkTimestamp time.Time                  // 流式首包时间（TTFB）
 }
 
-// NewResponseWriterWrapper creates and initializes a new ResponseWriterWrapper.
-// It takes the original gin.ResponseWriter, a logger instance, and request information.
-//
-// Parameters:
-//   - w: The original gin.ResponseWriter to wrap.
-//   - logger: The logging service to use for recording requests.
-//   - requestInfo: The pre-captured information about the incoming request.
-//
-// Returns:
-//   - A pointer to a new ResponseWriterWrapper.
+// NewResponseWriterWrapper 创建并初始化 ResponseWriterWrapper，需传入原始 ResponseWriter、日志实例与已采集的请求信息。
 func NewResponseWriterWrapper(w gin.ResponseWriter, logger logging.RequestLogger, requestInfo *RequestInfo) *ResponseWriterWrapper {
 	return &ResponseWriterWrapper{
 		ResponseWriter: w,
@@ -61,29 +49,19 @@ func NewResponseWriterWrapper(w gin.ResponseWriter, logger logging.RequestLogger
 	}
 }
 
-// Write wraps the underlying ResponseWriter's Write method to capture response data.
-// For non-streaming responses, it writes to an internal buffer. For streaming responses,
-// it sends data chunks to a non-blocking channel for asynchronous logging.
-// CRITICAL: This method prioritizes writing to the client to ensure zero latency,
-// handling logging operations subsequently.
+// Write 封装底层 Write，先写客户端再处理日志；非流式写入内部缓冲，流式通过非阻塞通道异步记录。
 func (w *ResponseWriterWrapper) Write(data []byte) (int, error) {
-	// Ensure headers are captured before first write
-	// This is critical because Write() may trigger WriteHeader() internally
 	w.ensureHeadersCaptured()
 
-	// CRITICAL: Write to client first (zero latency)
 	n, err := w.ResponseWriter.Write(data)
 
-	// THEN: Handle logging based on response type
 	if w.isStreaming && w.chunkChannel != nil {
-		// Capture TTFB on first chunk (synchronous, before async channel send)
 		if w.firstChunkTimestamp.IsZero() {
 			w.firstChunkTimestamp = time.Now()
 		}
-		// For streaming responses: Send to async logging channel (non-blocking)
 		select {
-		case w.chunkChannel <- append([]byte(nil), data...): // Non-blocking send with copy
-		default: // Channel full, skip logging to avoid blocking
+		case w.chunkChannel <- append([]byte(nil), data...):
+		default:
 		}
 		return n, err
 	}
@@ -113,18 +91,13 @@ func (w *ResponseWriterWrapper) shouldBufferResponseBody() bool {
 	return status >= http.StatusBadRequest
 }
 
-// WriteString wraps the underlying ResponseWriter's WriteString method to capture response data.
-// Some handlers (and fmt/io helpers) write via io.StringWriter; without this override, those writes
-// bypass Write() and would be missing from request logs.
+// WriteString 封装 WriteString 以采集数据；部分处理器通过 io.StringWriter 写入，不重写则不会进入请求日志。
 func (w *ResponseWriterWrapper) WriteString(data string) (int, error) {
 	w.ensureHeadersCaptured()
 
-	// CRITICAL: Write to client first (zero latency)
 	n, err := w.ResponseWriter.WriteString(data)
 
-	// THEN: Capture for logging
 	if w.isStreaming && w.chunkChannel != nil {
-		// Capture TTFB on first chunk (synchronous, before async channel send)
 		if w.firstChunkTimestamp.IsZero() {
 			w.firstChunkTimestamp = time.Now()
 		}
@@ -141,20 +114,15 @@ func (w *ResponseWriterWrapper) WriteString(data string) (int, error) {
 	return n, err
 }
 
-// WriteHeader wraps the underlying ResponseWriter's WriteHeader method.
-// It captures the status code, detects if the response is streaming based on the Content-Type header,
-// and initializes the appropriate logging mechanism (standard or streaming).
+// WriteHeader 封装底层 WriteHeader：记录状态码、按 Content-Type 判断是否流式并初始化对应日志（标准或流式）。
 func (w *ResponseWriterWrapper) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 
-	// Capture response headers using the new method
 	w.captureCurrentHeaders()
 
-	// Detect streaming based on Content-Type
 	contentType := w.ResponseWriter.Header().Get("Content-Type")
 	w.isStreaming = w.detectStreaming(contentType)
 
-	// If streaming, initialize streaming log writer
 	if w.isStreaming && w.logger.IsEnabled() {
 		streamWriter, err := w.logger.LogStreamingRequest(
 			w.requestInfo.URL,
@@ -165,63 +133,47 @@ func (w *ResponseWriterWrapper) WriteHeader(statusCode int) {
 		)
 		if err == nil {
 			w.streamWriter = streamWriter
-			w.chunkChannel = make(chan []byte, 100) // Buffered channel for async writes
+			w.chunkChannel = make(chan []byte, 100)
 			doneChan := make(chan struct{})
 			w.streamDone = doneChan
 
-			// Start async chunk processor
 			go w.processStreamingChunks(doneChan)
 
-			// Write status immediately
 			_ = streamWriter.WriteStatus(statusCode, w.headers)
 		}
 	}
 
-	// Call original WriteHeader
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
-// ensureHeadersCaptured is a helper function to make sure response headers are captured.
-// It is safe to call this method multiple times; it will always refresh the headers
-// with the latest state from the underlying ResponseWriter.
+// ensureHeadersCaptured 确保已采集响应头，可多次调用，每次会从底层 ResponseWriter 刷新最新状态。
 func (w *ResponseWriterWrapper) ensureHeadersCaptured() {
-	// Always capture the current headers to ensure we have the latest state
 	w.captureCurrentHeaders()
 }
 
-// captureCurrentHeaders reads all headers from the underlying ResponseWriter and stores them
-// in the wrapper's headers map. It creates copies of the header values to prevent race conditions.
+// captureCurrentHeaders 从底层 ResponseWriter 读取所有头并存入封装体的 headers，复制值以避免竞态。
 func (w *ResponseWriterWrapper) captureCurrentHeaders() {
-	// Initialize headers map if needed
 	if w.headers == nil {
 		w.headers = make(map[string][]string)
 	}
 
-	// Capture all current headers from the underlying ResponseWriter
 	for key, values := range w.ResponseWriter.Header() {
-		// Make a copy of the values slice to avoid reference issues
 		headerValues := make([]string, len(values))
 		copy(headerValues, values)
 		w.headers[key] = headerValues
 	}
 }
 
-// detectStreaming determines if a response should be treated as a streaming response.
-// It checks for a "text/event-stream" Content-Type or a '"stream": true'
-// field in the original request body.
+// detectStreaming 判断是否为流式响应：Content-Type 含 text/event-stream，或请求体含 "stream": true。
 func (w *ResponseWriterWrapper) detectStreaming(contentType string) bool {
-	// Check Content-Type for Server-Sent Events
 	if strings.Contains(contentType, "text/event-stream") {
 		return true
 	}
 
-	// If a concrete Content-Type is already set (e.g., application/json for error responses),
-	// treat it as non-streaming instead of inferring from the request payload.
 	if strings.TrimSpace(contentType) != "" {
 		return false
 	}
 
-	// Only fall back to request payload hints when Content-Type is not set yet.
 	if w.requestInfo != nil && len(w.requestInfo.Body) > 0 {
 		bodyStr := string(w.requestInfo.Body)
 		return strings.Contains(bodyStr, `"stream": true`) || strings.Contains(bodyStr, `"stream":true`)
@@ -230,8 +182,7 @@ func (w *ResponseWriterWrapper) detectStreaming(contentType string) bool {
 	return false
 }
 
-// processStreamingChunks runs in a separate goroutine to process response chunks from the chunkChannel.
-// It asynchronously writes each chunk to the streaming log writer.
+// processStreamingChunks 在独立 goroutine 中从 chunkChannel 读取块并异步写入流式日志。
 func (w *ResponseWriterWrapper) processStreamingChunks(done chan struct{}) {
 	if done == nil {
 		return
@@ -248,10 +199,7 @@ func (w *ResponseWriterWrapper) processStreamingChunks(done chan struct{}) {
 	}
 }
 
-// Finalize completes the logging process for the request and response.
-// For streaming responses, it closes the chunk channel and the stream writer.
-// For non-streaming responses, it logs the complete request and response details,
-// including any API-specific request/response data stored in the Gin context.
+// Finalize 完成请求与响应的日志：流式时关闭 chunk 通道与流式写入器；非流式时记录完整请求/响应及 Gin 上下文中的 API 数据。
 func (w *ResponseWriterWrapper) Finalize(c *gin.Context) error {
 	if w.logger == nil {
 		return nil
@@ -293,7 +241,6 @@ func (w *ResponseWriterWrapper) Finalize(c *gin.Context) error {
 
 		w.streamWriter.SetFirstChunkTimestamp(w.firstChunkTimestamp)
 
-		// Write API Request and Response to the streaming log before closing
 		apiRequest := w.extractAPIRequest(c)
 		if len(apiRequest) > 0 {
 			_ = w.streamWriter.WriteAPIRequest(apiRequest)

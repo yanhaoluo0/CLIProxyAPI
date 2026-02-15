@@ -144,7 +144,7 @@ func startCallbackForwarder(port int, provider, targetBase string) (*callbackFor
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
+		return nil, fmt.Errorf("在 %s 上监听失败: %w", addr, err)
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +169,7 @@ func startCallbackForwarder(port int, provider, targetBase string) (*callbackFor
 
 	go func() {
 		if errServe := srv.Serve(ln); errServe != nil && !errors.Is(errServe, http.ErrServerClosed) {
-			log.WithError(errServe).Warnf("callback forwarder for %s stopped unexpectedly", provider)
+			log.WithError(errServe).Warnf("回调转发器 %s 意外停止", provider)
 		}
 		close(done)
 	}()
@@ -184,7 +184,7 @@ func startCallbackForwarder(port int, provider, targetBase string) (*callbackFor
 	callbackForwarders[port] = forwarder
 	callbackForwardersMu.Unlock()
 
-	log.Infof("callback forwarder for %s listening on %s", provider, addr)
+	log.Infof("回调转发器 %s 正在 %s 监听", provider, addr)
 
 	return forwarder, nil
 }
@@ -222,7 +222,7 @@ func stopForwarderInstance(port int, forwarder *callbackForwarder) {
 	defer cancel()
 
 	if err := forwarder.server.Shutdown(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.WithError(err).Warnf("failed to shut down callback forwarder on port %d", port)
+		log.WithError(err).Warnf("关闭端口 %d 上的回调转发器失败", port)
 	}
 
 	select {
@@ -230,12 +230,12 @@ func stopForwarderInstance(port int, forwarder *callbackForwarder) {
 	case <-time.After(2 * time.Second):
 	}
 
-	log.Infof("callback forwarder on port %d stopped", port)
+	log.Infof("端口 %d 上的回调转发器已停止", port)
 }
 
 func (h *Handler) managementCallbackURL(path string) (string, error) {
 	if h == nil || h.cfg == nil || h.cfg.Port <= 0 {
-		return "", fmt.Errorf("server port is not configured")
+		return "", fmt.Errorf("未配置服务端端口")
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
@@ -271,7 +271,7 @@ func (h *Handler) ListAuthFiles(c *gin.Context) {
 	c.JSON(200, gin.H{"files": files})
 }
 
-// GetAuthFileModels returns the models supported by a specific auth file
+// GetAuthFileModels 返回指定认证文件支持的模型列表。
 func (h *Handler) GetAuthFileModels(c *gin.Context) {
 	name := c.Query("name")
 	if name == "" {
@@ -319,11 +319,11 @@ func (h *Handler) GetAuthFileModels(c *gin.Context) {
 	c.JSON(200, gin.H{"models": result})
 }
 
-// List auth files from disk when the auth manager is unavailable.
+// listAuthFilesFromDisk 在认证管理器不可用时从磁盘列出认证文件。
 func (h *Handler) listAuthFilesFromDisk(c *gin.Context) {
 	entries, err := os.ReadDir(h.cfg.AuthDir)
 	if err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to read auth dir: %v", err)})
+		c.JSON(500, gin.H{"error": fmt.Sprintf("读取认证目录失败: %v", err)})
 		return
 	}
 	files := make([]gin.H, 0)
@@ -419,7 +419,7 @@ func (h *Handler) buildAuthFileEntry(auth *coreauth.Auth) gin.H {
 			}
 			entry["source"] = "memory"
 		} else {
-			log.WithError(err).Warnf("failed to stat auth file %s", path)
+			log.WithError(err).Warnf("stat 认证文件 %s 失败", path)
 		}
 	}
 	if claims := extractCodexIDTokenClaims(auth); claims != nil {
@@ -502,7 +502,7 @@ func isRuntimeOnlyAuth(auth *coreauth.Auth) bool {
 	return strings.EqualFold(strings.TrimSpace(auth.Attributes["runtime_only"]), "true")
 }
 
-// Download single auth file by name
+// DownloadAuthFile 按文件名下载单个认证文件。
 func (h *Handler) DownloadAuthFile(c *gin.Context) {
 	name := c.Query("name")
 	if name == "" || strings.Contains(name, string(os.PathSeparator)) {
@@ -527,7 +527,7 @@ func (h *Handler) DownloadAuthFile(c *gin.Context) {
 	c.Data(200, "application/json", data)
 }
 
-// Upload auth file: multipart or raw JSON with ?name=
+// UploadAuthFile 上传认证文件：multipart 或 raw JSON，可选 ?name=。
 func (h *Handler) UploadAuthFile(c *gin.Context) {
 	if h.authManager == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "core auth manager unavailable"})
@@ -593,7 +593,7 @@ func (h *Handler) UploadAuthFile(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
-// Delete auth files: single by name or all
+// DeleteAuthFile 按名称删除单个认证文件或全部删除。
 func (h *Handler) DeleteAuthFile(c *gin.Context) {
 	if h.authManager == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "core auth manager unavailable"})
@@ -683,18 +683,18 @@ func (h *Handler) registerAuthFromFile(ctx context.Context, path string, data []
 		return nil
 	}
 	if path == "" {
-		return fmt.Errorf("auth path is empty")
+		return fmt.Errorf("认证路径为空")
 	}
 	if data == nil {
 		var err error
 		data, err = os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("failed to read auth file: %w", err)
+			return fmt.Errorf("读取认证文件失败: %w", err)
 		}
 	}
 	metadata := make(map[string]any)
 	if err := json.Unmarshal(data, &metadata); err != nil {
-		return fmt.Errorf("invalid auth file: %w", err)
+		return fmt.Errorf("认证文件无效: %w", err)
 	}
 	provider, _ := metadata["type"].(string)
 	if provider == "" {
@@ -742,7 +742,7 @@ func (h *Handler) registerAuthFromFile(ctx context.Context, path string, data []
 	return err
 }
 
-// PatchAuthFileStatus toggles the disabled state of an auth file
+// PatchAuthFileStatus 切换认证文件的禁用状态。
 func (h *Handler) PatchAuthFileStatus(c *gin.Context) {
 	if h.authManager == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "core auth manager unavailable"})
@@ -830,11 +830,11 @@ func (h *Handler) disableAuth(ctx context.Context, id string) {
 
 func (h *Handler) deleteTokenRecord(ctx context.Context, path string) error {
 	if strings.TrimSpace(path) == "" {
-		return fmt.Errorf("auth path is empty")
+		return fmt.Errorf("认证路径为空")
 	}
 	store := h.tokenStoreWithBaseDir()
 	if store == nil {
-		return fmt.Errorf("token store unavailable")
+		return fmt.Errorf("令牌存储不可用")
 	}
 	return store.Delete(ctx, path)
 }
@@ -858,11 +858,11 @@ func (h *Handler) tokenStoreWithBaseDir() coreauth.Store {
 
 func (h *Handler) saveTokenRecord(ctx context.Context, record *coreauth.Auth) (string, error) {
 	if record == nil {
-		return "", fmt.Errorf("token record is nil")
+		return "", fmt.Errorf("令牌记录为 nil")
 	}
 	store := h.tokenStoreWithBaseDir()
 	if store == nil {
-		return "", fmt.Errorf("token store unavailable")
+		return "", fmt.Errorf("令牌存储不可用")
 	}
 	return store.Save(ctx, record)
 }
@@ -875,7 +875,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 	// Generate PKCE codes
 	pkceCodes, err := claude.GeneratePKCECodes()
 	if err != nil {
-		log.Errorf("Failed to generate PKCE codes: %v", err)
+		log.Errorf("生成 PKCE 码失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate PKCE codes"})
 		return
 	}
@@ -883,7 +883,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 	// Generate random state parameter
 	state, err := misc.GenerateRandomState()
 	if err != nil {
-		log.Errorf("Failed to generate state parameter: %v", err)
+		log.Errorf("生成 state 参数失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate state parameter"})
 		return
 	}
@@ -894,7 +894,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 	// Generate authorization URL (then override redirect_uri to reuse server port)
 	authURL, state, err := anthropicAuth.GenerateAuthURL(state, pkceCodes)
 	if err != nil {
-		log.Errorf("Failed to generate authorization URL: %v", err)
+		log.Errorf("生成授权 URL 失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate authorization url"})
 		return
 	}
@@ -906,13 +906,13 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 	if isWebUI {
 		targetURL, errTarget := h.managementCallbackURL("/anthropic/callback")
 		if errTarget != nil {
-			log.WithError(errTarget).Error("failed to compute anthropic callback target")
+			log.WithError(errTarget).Error("计算 anthropic 回调目标失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "callback server unavailable"})
 			return
 		}
 		var errStart error
 		if forwarder, errStart = startCallbackForwarder(anthropicCallbackPort, "anthropic", targetURL); errStart != nil {
-			log.WithError(errStart).Error("failed to start anthropic callback forwarder")
+			log.WithError(errStart).Error("启动 anthropic 回调转发器失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start callback server"})
 			return
 		}
@@ -933,7 +933,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 				}
 				if time.Now().After(deadline) {
 					SetOAuthSessionError(state, "Timeout waiting for OAuth callback")
-					return nil, fmt.Errorf("timeout waiting for OAuth callback")
+					return nil, fmt.Errorf("等待 OAuth 回调超时")
 				}
 				data, errRead := os.ReadFile(path)
 				if errRead == nil {
@@ -964,7 +964,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 			return
 		}
 		if resultMap["state"] != state {
-			authErr := claude.NewAuthenticationError(claude.ErrInvalidState, fmt.Errorf("expected %s, got %s", state, resultMap["state"]))
+			authErr := claude.NewAuthenticationError(claude.ErrInvalidState, fmt.Errorf("期望 state %s，实际 %s", state, resultMap["state"]))
 			log.Error(claude.GetUserFriendlyMessage(authErr))
 			SetOAuthSessionError(state, "State code error")
 			return
@@ -978,7 +978,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 		bundle, errExchange := anthropicAuth.ExchangeCodeForTokens(ctx, code, state, pkceCodes)
 		if errExchange != nil {
 			authErr := claude.NewAuthenticationError(claude.ErrCodeExchangeFailed, errExchange)
-			log.Errorf("Failed to exchange authorization code for tokens: %v", authErr)
+			log.Errorf("用授权码交换令牌失败: %v", authErr)
 			SetOAuthSessionError(state, "Failed to exchange authorization code for tokens")
 			return
 		}
@@ -994,7 +994,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 		}
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
-			log.Errorf("Failed to save authentication tokens: %v", errSave)
+			log.Errorf("保存认证令牌失败: %v", errSave)
 			SetOAuthSessionError(state, "Failed to save authentication tokens")
 			return
 		}
@@ -1041,13 +1041,13 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 	if isWebUI {
 		targetURL, errTarget := h.managementCallbackURL("/google/callback")
 		if errTarget != nil {
-			log.WithError(errTarget).Error("failed to compute gemini callback target")
+			log.WithError(errTarget).Error("计算 gemini 回调目标失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "callback server unavailable"})
 			return
 		}
 		var errStart error
 		if forwarder, errStart = startCallbackForwarder(geminiCallbackPort, "gemini", targetURL); errStart != nil {
-			log.WithError(errStart).Error("failed to start gemini callback forwarder")
+			log.WithError(errStart).Error("启动 gemini 回调转发器失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start callback server"})
 			return
 		}
@@ -1068,7 +1068,7 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 				return
 			}
 			if time.Now().After(deadline) {
-				log.Error("oauth flow timed out")
+				log.Error("OAuth 流程超时")
 				SetOAuthSessionError(state, "OAuth flow timed out")
 				return
 			}
@@ -1077,13 +1077,13 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 				_ = json.Unmarshal(data, &m)
 				_ = os.Remove(waitFile)
 				if errStr := m["error"]; errStr != "" {
-					log.Errorf("Authentication failed: %s", errStr)
+					log.Errorf("认证失败: %s", errStr)
 					SetOAuthSessionError(state, "Authentication failed")
 					return
 				}
 				authCode = m["code"]
 				if authCode == "" {
-					log.Errorf("Authentication failed: code not found")
+					log.Errorf("认证失败: 未找到 code")
 					SetOAuthSessionError(state, "Authentication failed: code not found")
 					return
 				}
@@ -1095,7 +1095,7 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 		// Exchange authorization code for token
 		token, err := conf.Exchange(ctx, authCode)
 		if err != nil {
-			log.Errorf("Failed to exchange token: %v", err)
+			log.Errorf("交换令牌失败: %v", err)
 			SetOAuthSessionError(state, "Failed to exchange token")
 			return
 		}
@@ -1106,7 +1106,7 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 		authHTTPClient := conf.Client(ctx, token)
 		req, errNewRequest := http.NewRequestWithContext(ctx, "GET", "https://www.googleapis.com/oauth2/v1/userinfo?alt=json", nil)
 		if errNewRequest != nil {
-			log.Errorf("Could not get user info: %v", errNewRequest)
+			log.Errorf("获取用户信息失败: %v", errNewRequest)
 			SetOAuthSessionError(state, "Could not get user info")
 			return
 		}
@@ -1115,19 +1115,19 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 
 		resp, errDo := authHTTPClient.Do(req)
 		if errDo != nil {
-			log.Errorf("Failed to execute request: %v", errDo)
+			log.Errorf("执行请求失败: %v", errDo)
 			SetOAuthSessionError(state, "Failed to execute request")
 			return
 		}
 		defer func() {
 			if errClose := resp.Body.Close(); errClose != nil {
-				log.Printf("warn: failed to close response body: %v", errClose)
+				log.Printf("警告: 关闭响应体失败: %v", errClose)
 			}
 		}()
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			log.Errorf("Get user info request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+			log.Errorf("获取用户信息请求失败，状态码 %d: %s", resp.StatusCode, string(bodyBytes))
 			SetOAuthSessionError(state, fmt.Sprintf("Get user info request failed with status %d", resp.StatusCode))
 			return
 		}
@@ -1143,7 +1143,7 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 		var ifToken map[string]any
 		jsonData, _ := json.Marshal(token)
 		if errUnmarshal := json.Unmarshal(jsonData, &ifToken); errUnmarshal != nil {
-			log.Errorf("Failed to unmarshal token: %v", errUnmarshal)
+			log.Errorf("反序列化令牌失败: %v", errUnmarshal)
 			SetOAuthSessionError(state, "Failed to unmarshal token")
 			return
 		}
@@ -1167,7 +1167,7 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 			NoBrowser: true,
 		})
 		if errGetClient != nil {
-			log.Errorf("failed to get authenticated client: %v", errGetClient)
+			log.Errorf("获取已认证客户端失败: %v", errGetClient)
 			SetOAuthSessionError(state, "Failed to get authenticated client")
 			return
 		}
@@ -1177,12 +1177,12 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 			ts.Auto = false
 			projects, errAll := onboardAllGeminiProjects(ctx, gemClient, &ts)
 			if errAll != nil {
-				log.Errorf("Failed to complete Gemini CLI onboarding: %v", errAll)
+				log.Errorf("完成 Gemini CLI 入驻失败: %v", errAll)
 				SetOAuthSessionError(state, "Failed to complete Gemini CLI onboarding")
 				return
 			}
 			if errVerify := ensureGeminiProjectsEnabled(ctx, gemClient, projects); errVerify != nil {
-				log.Errorf("Failed to verify Cloud AI API status: %v", errVerify)
+				log.Errorf("验证 Cloud AI API 状态失败: %v", errVerify)
 				SetOAuthSessionError(state, "Failed to verify Cloud AI API status")
 				return
 			}
@@ -1191,49 +1191,49 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 		} else if strings.EqualFold(requestedProjectID, "GOOGLE_ONE") {
 			ts.Auto = false
 			if errSetup := performGeminiCLISetup(ctx, gemClient, &ts, ""); errSetup != nil {
-				log.Errorf("Google One auto-discovery failed: %v", errSetup)
+				log.Errorf("Google One 自动发现失败: %v", errSetup)
 				SetOAuthSessionError(state, "Google One auto-discovery failed")
 				return
 			}
 			if strings.TrimSpace(ts.ProjectID) == "" {
-				log.Error("Google One auto-discovery returned empty project ID")
+				log.Error("Google One 自动发现返回空项目 ID")
 				SetOAuthSessionError(state, "Google One auto-discovery returned empty project ID")
 				return
 			}
 			isChecked, errCheck := checkCloudAPIIsEnabled(ctx, gemClient, ts.ProjectID)
 			if errCheck != nil {
-				log.Errorf("Failed to verify Cloud AI API status: %v", errCheck)
+				log.Errorf("验证 Cloud AI API 状态失败: %v", errCheck)
 				SetOAuthSessionError(state, "Failed to verify Cloud AI API status")
 				return
 			}
 			ts.Checked = isChecked
 			if !isChecked {
-				log.Error("Cloud AI API is not enabled for the auto-discovered project")
+				log.Error("自动发现的项目未启用 Cloud AI API")
 				SetOAuthSessionError(state, "Cloud AI API not enabled")
 				return
 			}
 		} else {
 			if errEnsure := ensureGeminiProjectAndOnboard(ctx, gemClient, &ts, requestedProjectID); errEnsure != nil {
-				log.Errorf("Failed to complete Gemini CLI onboarding: %v", errEnsure)
+				log.Errorf("完成 Gemini CLI 入驻失败: %v", errEnsure)
 				SetOAuthSessionError(state, "Failed to complete Gemini CLI onboarding")
 				return
 			}
 
 			if strings.TrimSpace(ts.ProjectID) == "" {
-				log.Error("Onboarding did not return a project ID")
+				log.Error("入驻未返回项目 ID")
 				SetOAuthSessionError(state, "Failed to resolve project ID")
 				return
 			}
 
 			isChecked, errCheck := checkCloudAPIIsEnabled(ctx, gemClient, ts.ProjectID)
 			if errCheck != nil {
-				log.Errorf("Failed to verify Cloud AI API status: %v", errCheck)
+				log.Errorf("验证 Cloud AI API 状态失败: %v", errCheck)
 				SetOAuthSessionError(state, "Failed to verify Cloud AI API status")
 				return
 			}
 			ts.Checked = isChecked
 			if !isChecked {
-				log.Error("Cloud AI API is not enabled for the selected project")
+				log.Error("所选项目未启用 Cloud AI API")
 				SetOAuthSessionError(state, "Cloud AI API not enabled")
 				return
 			}
@@ -1256,7 +1256,7 @@ func (h *Handler) RequestGeminiCLIToken(c *gin.Context) {
 		}
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
-			log.Errorf("Failed to save token to file: %v", errSave)
+			log.Errorf("保存令牌到文件失败: %v", errSave)
 			SetOAuthSessionError(state, "Failed to save token to file")
 			return
 		}
@@ -1277,7 +1277,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 	// Generate PKCE codes
 	pkceCodes, err := codex.GeneratePKCECodes()
 	if err != nil {
-		log.Errorf("Failed to generate PKCE codes: %v", err)
+		log.Errorf("生成 PKCE 码失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate PKCE codes"})
 		return
 	}
@@ -1285,7 +1285,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 	// Generate random state parameter
 	state, err := misc.GenerateRandomState()
 	if err != nil {
-		log.Errorf("Failed to generate state parameter: %v", err)
+		log.Errorf("生成 state 参数失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate state parameter"})
 		return
 	}
@@ -1296,7 +1296,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 	// Generate authorization URL
 	authURL, err := openaiAuth.GenerateAuthURL(state, pkceCodes)
 	if err != nil {
-		log.Errorf("Failed to generate authorization URL: %v", err)
+		log.Errorf("生成授权 URL 失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate authorization url"})
 		return
 	}
@@ -1308,13 +1308,13 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 	if isWebUI {
 		targetURL, errTarget := h.managementCallbackURL("/codex/callback")
 		if errTarget != nil {
-			log.WithError(errTarget).Error("failed to compute codex callback target")
+			log.WithError(errTarget).Error("计算 codex 回调目标失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "callback server unavailable"})
 			return
 		}
 		var errStart error
 		if forwarder, errStart = startCallbackForwarder(codexCallbackPort, "codex", targetURL); errStart != nil {
-			log.WithError(errStart).Error("failed to start codex callback forwarder")
+			log.WithError(errStart).Error("启动 codex 回调转发器失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start callback server"})
 			return
 		}
@@ -1334,7 +1334,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 				return
 			}
 			if time.Now().After(deadline) {
-				authErr := codex.NewAuthenticationError(codex.ErrCallbackTimeout, fmt.Errorf("timeout waiting for OAuth callback"))
+				authErr := codex.NewAuthenticationError(codex.ErrCallbackTimeout, fmt.Errorf("等待 OAuth 回调超时"))
 				log.Error(codex.GetUserFriendlyMessage(authErr))
 				SetOAuthSessionError(state, "Timeout waiting for OAuth callback")
 				return
@@ -1350,7 +1350,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 					return
 				}
 				if m["state"] != state {
-					authErr := codex.NewAuthenticationError(codex.ErrInvalidState, fmt.Errorf("expected %s, got %s", state, m["state"]))
+					authErr := codex.NewAuthenticationError(codex.ErrInvalidState, fmt.Errorf("期望 state %s，实际 %s", state, m["state"]))
 					SetOAuthSessionError(state, "State code error")
 					log.Error(codex.GetUserFriendlyMessage(authErr))
 					return
@@ -1361,13 +1361,13 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 			time.Sleep(500 * time.Millisecond)
 		}
 
-		log.Debug("Authorization code received, exchanging for tokens...")
+		log.Debug("已收到授权码，正在交换令牌...")
 		// Exchange code for tokens using internal auth service
 		bundle, errExchange := openaiAuth.ExchangeCodeForTokens(ctx, code, pkceCodes)
 		if errExchange != nil {
 			authErr := codex.NewAuthenticationError(codex.ErrCodeExchangeFailed, errExchange)
 			SetOAuthSessionError(state, "Failed to exchange authorization code for tokens")
-			log.Errorf("Failed to exchange authorization code for tokens: %v", authErr)
+			log.Errorf("用授权码交换令牌失败: %v", authErr)
 			return
 		}
 
@@ -1399,7 +1399,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
 			SetOAuthSessionError(state, "Failed to save authentication tokens")
-			log.Errorf("Failed to save authentication tokens: %v", errSave)
+			log.Errorf("保存认证令牌失败: %v", errSave)
 			return
 		}
 		fmt.Printf("Authentication successful! Token saved to %s\n", savedPath)
@@ -1423,7 +1423,7 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 
 	state, errState := misc.GenerateRandomState()
 	if errState != nil {
-		log.Errorf("Failed to generate state parameter: %v", errState)
+		log.Errorf("生成 state 参数失败: %v", errState)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate state parameter"})
 		return
 	}
@@ -1438,13 +1438,13 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 	if isWebUI {
 		targetURL, errTarget := h.managementCallbackURL("/antigravity/callback")
 		if errTarget != nil {
-			log.WithError(errTarget).Error("failed to compute antigravity callback target")
+			log.WithError(errTarget).Error("计算 antigravity 回调目标失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "callback server unavailable"})
 			return
 		}
 		var errStart error
 		if forwarder, errStart = startCallbackForwarder(antigravity.CallbackPort, "antigravity", targetURL); errStart != nil {
-			log.WithError(errStart).Error("failed to start antigravity callback forwarder")
+			log.WithError(errStart).Error("启动 antigravity 回调转发器失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start callback server"})
 			return
 		}
@@ -1463,7 +1463,7 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 				return
 			}
 			if time.Now().After(deadline) {
-				log.Error("oauth flow timed out")
+				log.Error("OAuth 流程超时")
 				SetOAuthSessionError(state, "OAuth flow timed out")
 				return
 			}
@@ -1472,18 +1472,18 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 				_ = json.Unmarshal(data, &payload)
 				_ = os.Remove(waitFile)
 				if errStr := strings.TrimSpace(payload["error"]); errStr != "" {
-					log.Errorf("Authentication failed: %s", errStr)
+					log.Errorf("认证失败: %s", errStr)
 					SetOAuthSessionError(state, "Authentication failed")
 					return
 				}
 				if payloadState := strings.TrimSpace(payload["state"]); payloadState != "" && payloadState != state {
-					log.Errorf("Authentication failed: state mismatch")
+					log.Errorf("认证失败: state 不匹配")
 					SetOAuthSessionError(state, "Authentication failed: state mismatch")
 					return
 				}
 				authCode = strings.TrimSpace(payload["code"])
 				if authCode == "" {
-					log.Error("Authentication failed: code not found")
+					log.Error("认证失败: 未找到 code")
 					SetOAuthSessionError(state, "Authentication failed: code not found")
 					return
 				}
@@ -1494,27 +1494,27 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 
 		tokenResp, errToken := authSvc.ExchangeCodeForTokens(ctx, authCode, redirectURI)
 		if errToken != nil {
-			log.Errorf("Failed to exchange token: %v", errToken)
+			log.Errorf("交换令牌失败: %v", errToken)
 			SetOAuthSessionError(state, "Failed to exchange token")
 			return
 		}
 
 		accessToken := strings.TrimSpace(tokenResp.AccessToken)
 		if accessToken == "" {
-			log.Error("antigravity: token exchange returned empty access token")
+			log.Error("antigravity: 令牌交换返回空 access token")
 			SetOAuthSessionError(state, "Failed to exchange token")
 			return
 		}
 
 		email, errInfo := authSvc.FetchUserInfo(ctx, accessToken)
 		if errInfo != nil {
-			log.Errorf("Failed to fetch user info: %v", errInfo)
+			log.Errorf("获取用户信息失败: %v", errInfo)
 			SetOAuthSessionError(state, "Failed to fetch user info")
 			return
 		}
 		email = strings.TrimSpace(email)
 		if email == "" {
-			log.Error("antigravity: user info returned empty email")
+			log.Error("antigravity: 用户信息返回空 email")
 			SetOAuthSessionError(state, "Failed to fetch user info")
 			return
 		}
@@ -1523,10 +1523,10 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 		if accessToken != "" {
 			fetchedProjectID, errProject := authSvc.FetchProjectID(ctx, accessToken)
 			if errProject != nil {
-				log.Warnf("antigravity: failed to fetch project ID: %v", errProject)
+				log.Warnf("antigravity: 获取项目 ID 失败: %v", errProject)
 			} else {
 				projectID = fetchedProjectID
-				log.Infof("antigravity: obtained project ID %s", projectID)
+				log.Infof("antigravity: 已获得项目 ID %s", projectID)
 			}
 		}
 
@@ -1561,7 +1561,7 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 		}
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
-			log.Errorf("Failed to save token to file: %v", errSave)
+			log.Errorf("保存令牌到文件失败: %v", errSave)
 			SetOAuthSessionError(state, "Failed to save token to file")
 			return
 		}
@@ -1590,7 +1590,7 @@ func (h *Handler) RequestQwenToken(c *gin.Context) {
 	// Generate authorization URL
 	deviceFlow, err := qwenAuth.InitiateDeviceFlow(ctx)
 	if err != nil {
-		log.Errorf("Failed to generate authorization URL: %v", err)
+		log.Errorf("生成授权 URL 失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate authorization url"})
 		return
 	}
@@ -1620,7 +1620,7 @@ func (h *Handler) RequestQwenToken(c *gin.Context) {
 		}
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
-			log.Errorf("Failed to save authentication tokens: %v", errSave)
+			log.Errorf("保存认证令牌失败: %v", errSave)
 			SetOAuthSessionError(state, "Failed to save authentication tokens")
 			return
 		}
@@ -1645,7 +1645,7 @@ func (h *Handler) RequestKimiToken(c *gin.Context) {
 	// Generate authorization URL
 	deviceFlow, errStartDeviceFlow := kimiAuth.StartDeviceFlow(ctx)
 	if errStartDeviceFlow != nil {
-		log.Errorf("Failed to generate authorization URL: %v", errStartDeviceFlow)
+		log.Errorf("生成授权 URL 失败: %v", errStartDeviceFlow)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate authorization url"})
 		return
 	}
@@ -1695,7 +1695,7 @@ func (h *Handler) RequestKimiToken(c *gin.Context) {
 		}
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
-			log.Errorf("Failed to save authentication tokens: %v", errSave)
+			log.Errorf("保存认证令牌失败: %v", errSave)
 			SetOAuthSessionError(state, "Failed to save authentication tokens")
 			return
 		}
@@ -1725,13 +1725,13 @@ func (h *Handler) RequestIFlowToken(c *gin.Context) {
 	if isWebUI {
 		targetURL, errTarget := h.managementCallbackURL("/iflow/callback")
 		if errTarget != nil {
-			log.WithError(errTarget).Error("failed to compute iflow callback target")
+			log.WithError(errTarget).Error("计算 iflow 回调目标失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "callback server unavailable"})
 			return
 		}
 		var errStart error
 		if forwarder, errStart = startCallbackForwarder(iflowauth.CallbackPort, "iflow", targetURL); errStart != nil {
-			log.WithError(errStart).Error("failed to start iflow callback forwarder")
+			log.WithError(errStart).Error("启动 iflow 回调转发器失败")
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "failed to start callback server"})
 			return
 		}
@@ -1806,7 +1806,7 @@ func (h *Handler) RequestIFlowToken(c *gin.Context) {
 		savedPath, errSave := h.saveTokenRecord(ctx, record)
 		if errSave != nil {
 			SetOAuthSessionError(state, "Failed to save authentication tokens")
-			log.Errorf("Failed to save authentication tokens: %v", errSave)
+			log.Errorf("保存认证令牌失败: %v", errSave)
 			return
 		}
 
@@ -1925,21 +1925,21 @@ func (e *projectSelectionRequiredError) Error() string {
 
 func ensureGeminiProjectAndOnboard(ctx context.Context, httpClient *http.Client, storage *geminiAuth.GeminiTokenStorage, requestedProject string) error {
 	if storage == nil {
-		return fmt.Errorf("gemini storage is nil")
+		return fmt.Errorf("gemini 存储为 nil")
 	}
 
 	trimmedRequest := strings.TrimSpace(requestedProject)
 	if trimmedRequest == "" {
 		projects, errProjects := fetchGCPProjects(ctx, httpClient)
 		if errProjects != nil {
-			return fmt.Errorf("fetch project list: %w", errProjects)
+			return fmt.Errorf("获取项目列表失败: %w", errProjects)
 		}
 		if len(projects) == 0 {
-			return fmt.Errorf("no Google Cloud projects available for this account")
+			return fmt.Errorf("该账号下无可用 Google Cloud 项目")
 		}
 		trimmedRequest = strings.TrimSpace(projects[0].ProjectID)
 		if trimmedRequest == "" {
-			return fmt.Errorf("resolved project id is empty")
+			return fmt.Errorf("解析出的项目 ID 为空")
 		}
 		storage.Auto = true
 	} else {
@@ -1976,7 +1976,7 @@ func onboardAllGeminiProjects(ctx context.Context, httpClient *http.Client, stor
 			continue
 		}
 		if err := performGeminiCLISetup(ctx, httpClient, storage, candidate); err != nil {
-			return nil, fmt.Errorf("onboard project %s: %w", candidate, err)
+			return nil, fmt.Errorf("入驻项目 %s 失败: %w", candidate, err)
 		}
 		finalID := strings.TrimSpace(storage.ProjectID)
 		if finalID == "" {
@@ -1999,10 +1999,10 @@ func ensureGeminiProjectsEnabled(ctx context.Context, httpClient *http.Client, p
 		}
 		isChecked, errCheck := checkCloudAPIIsEnabled(ctx, httpClient, trimmed)
 		if errCheck != nil {
-			return fmt.Errorf("project %s: %w", trimmed, errCheck)
+			return fmt.Errorf("项目 %s: %w", trimmed, errCheck)
 		}
 		if !isChecked {
-			return fmt.Errorf("project %s: Cloud AI API not enabled", trimmed)
+			return fmt.Errorf("项目 %s: 未启用 Cloud AI API", trimmed)
 		}
 	}
 	return nil
@@ -2027,7 +2027,7 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 
 	var loadResp map[string]any
 	if errLoad := callGeminiCLI(ctx, httpClient, "loadCodeAssist", loadReqBody, &loadResp); errLoad != nil {
-		return fmt.Errorf("load code assist: %w", errLoad)
+		return fmt.Errorf("加载 code assist 失败: %w", errLoad)
 	}
 
 	tierID := "legacy-tier"
@@ -2073,7 +2073,7 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 		for attempt := 1; ; attempt++ {
 			var onboardResp map[string]any
 			if errOnboard := callGeminiCLI(autoCtx, httpClient, "onboardUser", autoOnboardReq, &onboardResp); errOnboard != nil {
-				return fmt.Errorf("auto-discovery onboardUser: %w", errOnboard)
+				return fmt.Errorf("自动发现 onboardUser 失败: %w", errOnboard)
 			}
 
 			if done, okDone := onboardResp["done"].(bool); okDone && done {
@@ -2090,7 +2090,7 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 				break
 			}
 
-			log.Debugf("Auto-discovery: onboarding in progress, attempt %d...", attempt)
+			log.Debugf("自动发现: 入驻进行中，第 %d 次尝试...", attempt)
 			select {
 			case <-autoCtx.Done():
 				return &projectSelectionRequiredError{}
@@ -2101,7 +2101,7 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 		if projectID == "" {
 			return &projectSelectionRequiredError{}
 		}
-		log.Infof("Auto-discovered project ID via onboarding: %s", projectID)
+		log.Infof("通过入驻自动发现的项目 ID: %s", projectID)
 	}
 
 	onboardReqBody := map[string]any{
@@ -2115,7 +2115,7 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 	for {
 		var onboardResp map[string]any
 		if errOnboard := callGeminiCLI(ctx, httpClient, "onboardUser", onboardReqBody, &onboardResp); errOnboard != nil {
-			return fmt.Errorf("onboard user: %w", errOnboard)
+			return fmt.Errorf("用户入驻失败: %w", errOnboard)
 		}
 
 		if done, okDone := onboardResp["done"].(bool); okDone && done {
@@ -2141,12 +2141,12 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 
 					if isFreeUser {
 						// For free users, use backend project ID for preview model access
-						log.Infof("Gemini onboarding: frontend project %s maps to backend project %s", projectID, responseProjectID)
-						log.Infof("Using backend project ID: %s (recommended for preview model access)", responseProjectID)
+						log.Infof("Gemini 入驻: 前端项目 %s 映射为后端项目 %s", projectID, responseProjectID)
+						log.Infof("使用后端项目 ID: %s（推荐用于预览模型访问）", responseProjectID)
 						finalProjectID = responseProjectID
 					} else {
 						// Pro users: keep requested project ID (original behavior)
-						log.Warnf("Gemini onboarding returned project %s instead of requested %s; keeping requested project ID.", responseProjectID, projectID)
+						log.Warnf("Gemini 入驻返回项目 %s 而非请求的 %s，保留请求的项目 ID", responseProjectID, projectID)
 					}
 				} else {
 					finalProjectID = responseProjectID
@@ -2158,13 +2158,13 @@ func performGeminiCLISetup(ctx context.Context, httpClient *http.Client, storage
 				storage.ProjectID = strings.TrimSpace(projectID)
 			}
 			if storage.ProjectID == "" {
-				return fmt.Errorf("onboard user completed without project id")
+				return fmt.Errorf("用户入驻完成但未返回项目 ID")
 			}
-			log.Infof("Onboarding complete. Using Project ID: %s", storage.ProjectID)
+			log.Infof("入驻完成，使用项目 ID: %s", storage.ProjectID)
 			return nil
 		}
 
-		log.Println("Onboarding in progress, waiting 5 seconds...")
+		log.Println("入驻进行中，等待 5 秒...")
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -2179,14 +2179,14 @@ func callGeminiCLI(ctx context.Context, httpClient *http.Client, endpoint string
 	if body != nil {
 		rawBody, errMarshal := json.Marshal(body)
 		if errMarshal != nil {
-			return fmt.Errorf("marshal request body: %w", errMarshal)
+			return fmt.Errorf("序列化请求体失败: %w", errMarshal)
 		}
 		reader = bytes.NewReader(rawBody)
 	}
 
 	req, errRequest := http.NewRequestWithContext(ctx, http.MethodPost, endPointURL, reader)
 	if errRequest != nil {
-		return fmt.Errorf("create request: %w", errRequest)
+		return fmt.Errorf("创建请求失败: %w", errRequest)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", geminiCLIUserAgent)
@@ -2195,17 +2195,17 @@ func callGeminiCLI(ctx context.Context, httpClient *http.Client, endpoint string
 
 	resp, errDo := httpClient.Do(req)
 	if errDo != nil {
-		return fmt.Errorf("execute request: %w", errDo)
+		return fmt.Errorf("执行请求失败: %w", errDo)
 	}
 	defer func() {
 		if errClose := resp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("api request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+		return fmt.Errorf("API 请求失败，状态码 %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
 	}
 
 	if result == nil {
@@ -2214,7 +2214,7 @@ func callGeminiCLI(ctx context.Context, httpClient *http.Client, endpoint string
 	}
 
 	if errDecode := json.NewDecoder(resp.Body).Decode(result); errDecode != nil {
-		return fmt.Errorf("decode response body: %w", errDecode)
+		return fmt.Errorf("解码响应体失败: %w", errDecode)
 	}
 
 	return nil
@@ -2223,27 +2223,27 @@ func callGeminiCLI(ctx context.Context, httpClient *http.Client, endpoint string
 func fetchGCPProjects(ctx context.Context, httpClient *http.Client) ([]interfaces.GCPProjectProjects, error) {
 	req, errRequest := http.NewRequestWithContext(ctx, http.MethodGet, "https://cloudresourcemanager.googleapis.com/v1/projects", nil)
 	if errRequest != nil {
-		return nil, fmt.Errorf("could not create project list request: %w", errRequest)
+		return nil, fmt.Errorf("创建项目列表请求失败: %w", errRequest)
 	}
 
 	resp, errDo := httpClient.Do(req)
 	if errDo != nil {
-		return nil, fmt.Errorf("failed to execute project list request: %w", errDo)
+		return nil, fmt.Errorf("执行项目列表请求失败: %w", errDo)
 	}
 	defer func() {
 		if errClose := resp.Body.Close(); errClose != nil {
-			log.Errorf("response body close error: %v", errClose)
+			log.Errorf("关闭响应体错误: %v", errClose)
 		}
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("project list request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+		return nil, fmt.Errorf("项目列表请求失败，状态码 %d: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
 	}
 
 	var projects interfaces.GCPProject
 	if errDecode := json.NewDecoder(resp.Body).Decode(&projects); errDecode != nil {
-		return nil, fmt.Errorf("failed to unmarshal project list: %w", errDecode)
+		return nil, fmt.Errorf("反序列化项目列表失败: %w", errDecode)
 	}
 
 	return projects.Projects, nil
@@ -2258,13 +2258,13 @@ func checkCloudAPIIsEnabled(ctx context.Context, httpClient *http.Client, projec
 		checkURL := fmt.Sprintf("%s/v1/projects/%s/services/%s", serviceUsageURL, projectID, service)
 		req, errRequest := http.NewRequestWithContext(ctx, http.MethodGet, checkURL, nil)
 		if errRequest != nil {
-			return false, fmt.Errorf("failed to create request: %w", errRequest)
+			return false, fmt.Errorf("创建请求失败: %w", errRequest)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("User-Agent", geminiCLIUserAgent)
 		resp, errDo := httpClient.Do(req)
 		if errDo != nil {
-			return false, fmt.Errorf("failed to execute request: %w", errDo)
+			return false, fmt.Errorf("执行请求失败: %w", errDo)
 		}
 
 		if resp.StatusCode == http.StatusOK {
@@ -2279,13 +2279,13 @@ func checkCloudAPIIsEnabled(ctx context.Context, httpClient *http.Client, projec
 		enableURL := fmt.Sprintf("%s/v1/projects/%s/services/%s:enable", serviceUsageURL, projectID, service)
 		req, errRequest = http.NewRequestWithContext(ctx, http.MethodPost, enableURL, strings.NewReader("{}"))
 		if errRequest != nil {
-			return false, fmt.Errorf("failed to create request: %w", errRequest)
+			return false, fmt.Errorf("创建请求失败: %w", errRequest)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("User-Agent", geminiCLIUserAgent)
 		resp, errDo = httpClient.Do(req)
 		if errDo != nil {
-			return false, fmt.Errorf("failed to execute request: %w", errDo)
+			return false, fmt.Errorf("执行请求失败: %w", errDo)
 		}
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -2304,7 +2304,7 @@ func checkCloudAPIIsEnabled(ctx context.Context, httpClient *http.Client, projec
 			}
 		}
 		_ = resp.Body.Close()
-		return false, fmt.Errorf("project activation required: %s", errMessage)
+		return false, fmt.Errorf("需要项目激活: %s", errMessage)
 	}
 	return true, nil
 }

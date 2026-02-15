@@ -17,9 +17,9 @@ const (
 )
 
 var (
-	errInvalidOAuthState      = errors.New("invalid oauth state")
-	errUnsupportedOAuthFlow   = errors.New("unsupported oauth provider")
-	errOAuthSessionNotPending = errors.New("oauth session is not pending")
+	errInvalidOAuthState      = errors.New("oauth state 无效")
+	errUnsupportedOAuthFlow   = errors.New("不支持的 oauth 提供方")
+	errOAuthSessionNotPending = errors.New("oauth 会话未处于待处理状态")
 )
 
 type oauthSession struct {
@@ -80,7 +80,7 @@ func (s *oauthSessionStore) SetError(state, message string) {
 		return
 	}
 	if message == "" {
-		message = "Authentication failed"
+		message = "认证失败"
 	}
 	now := time.Now()
 
@@ -193,16 +193,16 @@ func IsOAuthSessionPending(state, provider string) bool {
 func ValidateOAuthState(state string) error {
 	trimmed := strings.TrimSpace(state)
 	if trimmed == "" {
-		return fmt.Errorf("%w: empty", errInvalidOAuthState)
+		return fmt.Errorf("%w: 为空", errInvalidOAuthState)
 	}
 	if len(trimmed) > maxOAuthStateLength {
-		return fmt.Errorf("%w: too long", errInvalidOAuthState)
+		return fmt.Errorf("%w: 过长", errInvalidOAuthState)
 	}
 	if strings.Contains(trimmed, "/") || strings.Contains(trimmed, "\\") {
-		return fmt.Errorf("%w: contains path separator", errInvalidOAuthState)
+		return fmt.Errorf("%w: 包含路径分隔符", errInvalidOAuthState)
 	}
 	if strings.Contains(trimmed, "..") {
-		return fmt.Errorf("%w: contains '..'", errInvalidOAuthState)
+		return fmt.Errorf("%w: 包含 '..'", errInvalidOAuthState)
 	}
 	for _, r := range trimmed {
 		switch {
@@ -211,7 +211,7 @@ func ValidateOAuthState(state string) error {
 		case r >= '0' && r <= '9':
 		case r == '-' || r == '_' || r == '.':
 		default:
-			return fmt.Errorf("%w: invalid character", errInvalidOAuthState)
+			return fmt.Errorf("%w: 非法字符", errInvalidOAuthState)
 		}
 	}
 	return nil
@@ -244,7 +244,7 @@ type oauthCallbackFilePayload struct {
 
 func WriteOAuthCallbackFile(authDir, provider, state, code, errorMessage string) (string, error) {
 	if strings.TrimSpace(authDir) == "" {
-		return "", fmt.Errorf("auth dir is empty")
+		return "", fmt.Errorf("auth 目录为空")
 	}
 	canonicalProvider, err := NormalizeOAuthProvider(provider)
 	if err != nil {
@@ -263,10 +263,10 @@ func WriteOAuthCallbackFile(authDir, provider, state, code, errorMessage string)
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("marshal oauth callback payload: %w", err)
+		return "", fmt.Errorf("序列化 oauth 回调负载失败: %w", err)
 	}
 	if err := os.WriteFile(filePath, data, 0o600); err != nil {
-		return "", fmt.Errorf("write oauth callback file: %w", err)
+		return "", fmt.Errorf("写入 oauth 回调文件失败: %w", err)
 	}
 	return filePath, nil
 }

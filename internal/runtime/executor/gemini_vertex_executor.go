@@ -1,6 +1,4 @@
-// Package executor provides runtime execution capabilities for various AI service providers.
-// This file implements the Vertex AI Gemini executor that talks to Google Vertex AI
-// endpoints using service account credentials or API keys.
+// Package executor 为多种 AI 服务提供运行时执行能力，本文件实现使用服务账号凭证或 API key 与 Google Vertex AI 端点通信的 Vertex AI Gemini 执行器。
 package executor
 
 import (
@@ -32,15 +30,13 @@ const (
 	vertexAPIVersion = "v1"
 )
 
-// isImagenModel checks if the model name is an Imagen image generation model.
-// Imagen models use the :predict action instead of :generateContent.
+// isImagenModel 检查模型名是否为 Imagen 图像生成模型；Imagen 模型使用 :predict 而非 :generateContent。
 func isImagenModel(model string) bool {
 	lowerModel := strings.ToLower(model)
 	return strings.Contains(lowerModel, "imagen")
 }
 
-// getVertexAction returns the appropriate action for the given model.
-// Imagen models use "predict", while Gemini models use "generateContent".
+// getVertexAction 返回给定模型对应的操作；Imagen 用 "predict"，Gemini 用 "generateContent"。
 func getVertexAction(model string, isStream bool) string {
 	if isImagenModel(model) {
 		return "predict"
@@ -51,9 +47,7 @@ func getVertexAction(model string, isStream bool) string {
 	return "generateContent"
 }
 
-// convertImagenToGeminiResponse converts Imagen API response to Gemini format
-// so it can be processed by the standard translation pipeline.
-// This ensures Imagen models return responses in the same format as gemini-3-pro-image-preview.
+// convertImagenToGeminiResponse 将 Imagen API 响应转换为 Gemini 格式，以便标准翻译流水线处理；确保 Imagen 模型响应格式与 gemini-3-pro-image-preview 一致。
 func convertImagenToGeminiResponse(data []byte, model string) []byte {
 	predictions := gjson.GetBytes(data, "predictions")
 	if !predictions.Exists() || !predictions.IsArray() {
@@ -106,8 +100,7 @@ func convertImagenToGeminiResponse(data []byte, model string) []byte {
 	return result
 }
 
-// convertToImagenRequest converts a Gemini-style request to Imagen API format.
-// Imagen API uses a different structure: instances[].prompt instead of contents[].
+// convertToImagenRequest 将 Gemini 风格请求转换为 Imagen API 格式；Imagen API 使用 instances[].prompt 而非 contents[]。
 func convertToImagenRequest(payload []byte) ([]byte, error) {
 	// Extract prompt from Gemini-style contents
 	prompt := ""
@@ -140,7 +133,7 @@ func convertToImagenRequest(payload []byte) ([]byte, error) {
 	}
 
 	if prompt == "" {
-		return nil, fmt.Errorf("imagen: no prompt found in request")
+		return nil, fmt.Errorf("imagen: 请求中未找到 prompt")
 	}
 
 	// Build Imagen API request
@@ -169,26 +162,20 @@ func convertToImagenRequest(payload []byte) ([]byte, error) {
 	return json.Marshal(imagenReq)
 }
 
-// GeminiVertexExecutor sends requests to Vertex AI Gemini endpoints using service account credentials.
+// GeminiVertexExecutor 使用服务账号凭证向 Vertex AI Gemini 端点发送请求。
 type GeminiVertexExecutor struct {
 	cfg *config.Config
 }
 
-// NewGeminiVertexExecutor creates a new Vertex AI Gemini executor instance.
-//
-// Parameters:
-//   - cfg: The application configuration
-//
-// Returns:
-//   - *GeminiVertexExecutor: A new Vertex AI Gemini executor instance
+// NewGeminiVertexExecutor 创建新的 Vertex AI Gemini 执行器实例。
 func NewGeminiVertexExecutor(cfg *config.Config) *GeminiVertexExecutor {
 	return &GeminiVertexExecutor{cfg: cfg}
 }
 
-// Identifier returns the executor identifier.
+// Identifier 返回执行器标识。
 func (e *GeminiVertexExecutor) Identifier() string { return "vertex" }
 
-// PrepareRequest injects Vertex credentials into the outgoing HTTP request.
+// PrepareRequest 将 Vertex 凭证注入出站 HTTP 请求。
 func (e *GeminiVertexExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -215,10 +202,10 @@ func (e *GeminiVertexExecutor) PrepareRequest(req *http.Request, auth *cliproxya
 	return nil
 }
 
-// HttpRequest injects Vertex credentials into the request and executes it.
+// HttpRequest 将 Vertex 凭证注入请求并执行。
 func (e *GeminiVertexExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("vertex executor: request is nil")
+		return nil, fmt.Errorf("vertex 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -231,7 +218,7 @@ func (e *GeminiVertexExecutor) HttpRequest(ctx context.Context, auth *cliproxyau
 	return httpClient.Do(httpReq)
 }
 
-// Execute performs a non-streaming request to the Vertex AI API.
+// Execute 对 Vertex AI API 执行非流式请求。
 func (e *GeminiVertexExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	if opts.Alt == "responses/compact" {
 		return resp, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -252,7 +239,7 @@ func (e *GeminiVertexExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 	return e.executeWithAPIKey(ctx, auth, req, opts, apiKey, baseURL)
 }
 
-// ExecuteStream performs a streaming request to the Vertex AI API.
+// ExecuteStream 对 Vertex AI API 执行流式请求。
 func (e *GeminiVertexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	if opts.Alt == "responses/compact" {
 		return nil, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -273,7 +260,7 @@ func (e *GeminiVertexExecutor) ExecuteStream(ctx context.Context, auth *cliproxy
 	return e.executeStreamWithAPIKey(ctx, auth, req, opts, apiKey, baseURL)
 }
 
-// CountTokens counts tokens for the given request using the Vertex AI API.
+// CountTokens 使用 Vertex AI API 为给定请求计 token 数。
 func (e *GeminiVertexExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	// Try API key authentication first
 	apiKey, baseURL := vertexAPICreds(auth)
@@ -291,13 +278,12 @@ func (e *GeminiVertexExecutor) CountTokens(ctx context.Context, auth *cliproxyau
 	return e.countTokensWithAPIKey(ctx, auth, req, opts, apiKey, baseURL)
 }
 
-// Refresh refreshes the authentication credentials (no-op for Vertex).
+// Refresh 刷新认证凭证（对 Vertex 为 no-op）。
 func (e *GeminiVertexExecutor) Refresh(_ context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
 	return auth, nil
 }
 
-// executeWithServiceAccount handles authentication using service account credentials.
-// This method contains the original service account authentication logic.
+// executeWithServiceAccount 使用服务账号凭证处理认证，包含原始服务账号认证逻辑。
 func (e *GeminiVertexExecutor) executeWithServiceAccount(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, projectID, location string, saJSON []byte) (resp cliproxyexecutor.Response, err error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -358,7 +344,7 @@ func (e *GeminiVertexExecutor) executeWithServiceAccount(ctx context.Context, au
 	if token, errTok := vertexAccessToken(ctx, e.cfg, auth, saJSON); errTok == nil && token != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+token)
 	} else if errTok != nil {
-		log.Errorf("vertex executor: access token error: %v", errTok)
+		log.Errorf("vertex 执行器: access token 错误: %v", errTok)
 		return resp, statusErr{code: 500, msg: "internal server error"}
 	}
 	applyGeminiHeaders(httpReq, auth)
@@ -389,7 +375,7 @@ func (e *GeminiVertexExecutor) executeWithServiceAccount(ctx context.Context, au
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("vertex executor: close response body error: %v", errClose)
+			log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -423,7 +409,7 @@ func (e *GeminiVertexExecutor) executeWithServiceAccount(ctx context.Context, au
 	return resp, nil
 }
 
-// executeWithAPIKey handles authentication using API key credentials.
+// executeWithAPIKey 使用 API key 凭证处理认证。
 func (e *GeminiVertexExecutor) executeWithAPIKey(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, apiKey, baseURL string) (resp cliproxyexecutor.Response, err error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -504,7 +490,7 @@ func (e *GeminiVertexExecutor) executeWithAPIKey(ctx context.Context, auth *clip
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("vertex executor: close response body error: %v", errClose)
+			log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -528,7 +514,7 @@ func (e *GeminiVertexExecutor) executeWithAPIKey(ctx context.Context, auth *clip
 	return resp, nil
 }
 
-// executeStreamWithServiceAccount handles streaming authentication using service account credentials.
+// executeStreamWithServiceAccount 使用服务账号凭证处理流式认证。
 func (e *GeminiVertexExecutor) executeStreamWithServiceAccount(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, projectID, location string, saJSON []byte) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -577,7 +563,7 @@ func (e *GeminiVertexExecutor) executeStreamWithServiceAccount(ctx context.Conte
 	if token, errTok := vertexAccessToken(ctx, e.cfg, auth, saJSON); errTok == nil && token != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+token)
 	} else if errTok != nil {
-		log.Errorf("vertex executor: access token error: %v", errTok)
+		log.Errorf("vertex 执行器: access token 错误: %v", errTok)
 		return nil, statusErr{code: 500, msg: "internal server error"}
 	}
 	applyGeminiHeaders(httpReq, auth)
@@ -612,7 +598,7 @@ func (e *GeminiVertexExecutor) executeStreamWithServiceAccount(ctx context.Conte
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("vertex executor: close response body error: %v", errClose)
+			log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 		}
 		return nil, statusErr{code: httpResp.StatusCode, msg: string(b)}
 	}
@@ -623,7 +609,7 @@ func (e *GeminiVertexExecutor) executeStreamWithServiceAccount(ctx context.Conte
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("vertex executor: close response body error: %v", errClose)
+				log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -653,7 +639,7 @@ func (e *GeminiVertexExecutor) executeStreamWithServiceAccount(ctx context.Conte
 	return stream, nil
 }
 
-// executeStreamWithAPIKey handles streaming authentication using API key credentials.
+// executeStreamWithAPIKey 使用 API key 凭证处理流式认证。
 func (e *GeminiVertexExecutor) executeStreamWithAPIKey(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, apiKey, baseURL string) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -737,7 +723,7 @@ func (e *GeminiVertexExecutor) executeStreamWithAPIKey(ctx context.Context, auth
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("vertex executor: close response body error: %v", errClose)
+			log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 		}
 		return nil, statusErr{code: httpResp.StatusCode, msg: string(b)}
 	}
@@ -748,7 +734,7 @@ func (e *GeminiVertexExecutor) executeStreamWithAPIKey(ctx context.Context, auth
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("vertex executor: close response body error: %v", errClose)
+				log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -778,7 +764,7 @@ func (e *GeminiVertexExecutor) executeStreamWithAPIKey(ctx context.Context, auth
 	return stream, nil
 }
 
-// countTokensWithServiceAccount counts tokens using service account credentials.
+// countTokensWithServiceAccount 使用服务账号凭证计 token 数。
 func (e *GeminiVertexExecutor) countTokensWithServiceAccount(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, projectID, location string, saJSON []byte) (cliproxyexecutor.Response, error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -810,7 +796,7 @@ func (e *GeminiVertexExecutor) countTokensWithServiceAccount(ctx context.Context
 	if token, errTok := vertexAccessToken(ctx, e.cfg, auth, saJSON); errTok == nil && token != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+token)
 	} else if errTok != nil {
-		log.Errorf("vertex executor: access token error: %v", errTok)
+		log.Errorf("vertex 执行器: access token 错误: %v", errTok)
 		return cliproxyexecutor.Response{}, statusErr{code: 500, msg: "internal server error"}
 	}
 	applyGeminiHeaders(httpReq, auth)
@@ -841,7 +827,7 @@ func (e *GeminiVertexExecutor) countTokensWithServiceAccount(ctx context.Context
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("vertex executor: close response body error: %v", errClose)
+			log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -862,7 +848,7 @@ func (e *GeminiVertexExecutor) countTokensWithServiceAccount(ctx context.Context
 	return cliproxyexecutor.Response{Payload: []byte(out)}, nil
 }
 
-// countTokensWithAPIKey handles token counting using API key credentials.
+// countTokensWithAPIKey 使用 API key 凭证处理 token 计数。
 func (e *GeminiVertexExecutor) countTokensWithAPIKey(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, apiKey, baseURL string) (cliproxyexecutor.Response, error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -925,7 +911,7 @@ func (e *GeminiVertexExecutor) countTokensWithAPIKey(ctx context.Context, auth *
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("vertex executor: close response body error: %v", errClose)
+			log.Errorf("vertex 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -946,10 +932,10 @@ func (e *GeminiVertexExecutor) countTokensWithAPIKey(ctx context.Context, auth *
 	return cliproxyexecutor.Response{Payload: []byte(out)}, nil
 }
 
-// vertexCreds extracts project, location and raw service account JSON from auth metadata.
+// vertexCreds 从 auth 元数据中提取 project、location 与原始服务账号 JSON。
 func vertexCreds(a *cliproxyauth.Auth) (projectID, location string, serviceAccountJSON []byte, err error) {
 	if a == nil || a.Metadata == nil {
-		return "", "", nil, fmt.Errorf("vertex executor: missing auth metadata")
+		return "", "", nil, fmt.Errorf("vertex 执行器: 缺少 auth 元数据")
 	}
 	if v, ok := a.Metadata["project_id"].(string); ok {
 		projectID = strings.TrimSpace(v)
@@ -961,7 +947,7 @@ func vertexCreds(a *cliproxyauth.Auth) (projectID, location string, serviceAccou
 		}
 	}
 	if projectID == "" {
-		return "", "", nil, fmt.Errorf("vertex executor: missing project_id in credentials")
+		return "", "", nil, fmt.Errorf("vertex 执行器: 凭证中缺少 project_id")
 	}
 	if v, ok := a.Metadata["location"].(string); ok && strings.TrimSpace(v) != "" {
 		location = strings.TrimSpace(v)
@@ -973,20 +959,20 @@ func vertexCreds(a *cliproxyauth.Auth) (projectID, location string, serviceAccou
 		sa = raw
 	}
 	if sa == nil {
-		return "", "", nil, fmt.Errorf("vertex executor: missing service_account in credentials")
+		return "", "", nil, fmt.Errorf("vertex 执行器: 凭证中缺少 service_account")
 	}
 	normalized, errNorm := vertexauth.NormalizeServiceAccountMap(sa)
 	if errNorm != nil {
-		return "", "", nil, fmt.Errorf("vertex executor: %w", errNorm)
+		return "", "", nil, fmt.Errorf("vertex 执行器: %w", errNorm)
 	}
 	saJSON, errMarshal := json.Marshal(normalized)
 	if errMarshal != nil {
-		return "", "", nil, fmt.Errorf("vertex executor: marshal service_account failed: %w", errMarshal)
+		return "", "", nil, fmt.Errorf("vertex 执行器: 序列化 service_account 失败: %w", errMarshal)
 	}
 	return projectID, location, saJSON, nil
 }
 
-// vertexAPICreds extracts API key and base URL from auth attributes following the claudeCreds pattern.
+// vertexAPICreds 按 claudeCreds 模式从 auth 属性中提取 API key 与 base URL。
 func vertexAPICreds(a *cliproxyauth.Auth) (apiKey, baseURL string) {
 	if a == nil {
 		return "", ""
@@ -1020,16 +1006,16 @@ func vertexAccessToken(ctx context.Context, cfg *config.Config, auth *cliproxyau
 	// Use cloud-platform scope for Vertex AI.
 	creds, errCreds := google.CredentialsFromJSON(ctx, saJSON, "https://www.googleapis.com/auth/cloud-platform")
 	if errCreds != nil {
-		return "", fmt.Errorf("vertex executor: parse service account json failed: %w", errCreds)
+		return "", fmt.Errorf("vertex 执行器: 解析 service account json 失败: %w", errCreds)
 	}
 	tok, errTok := creds.TokenSource.Token()
 	if errTok != nil {
-		return "", fmt.Errorf("vertex executor: get access token failed: %w", errTok)
+		return "", fmt.Errorf("vertex 执行器: 获取 access token 失败: %w", errTok)
 	}
 	return tok.AccessToken, nil
 }
 
-// resolveVertexConfig finds the matching vertex-api-key configuration entry for the given auth.
+// resolveVertexConfig 为给定 auth 查找匹配的 vertex-api-key 配置项。
 func (e *GeminiVertexExecutor) resolveVertexConfig(auth *cliproxyauth.Auth) *config.VertexCompatKey {
 	if auth == nil || e.cfg == nil {
 		return nil

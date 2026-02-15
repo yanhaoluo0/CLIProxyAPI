@@ -1,5 +1,4 @@
-// Package registry provides model definitions for various AI service providers.
-// This file stores the static model metadata catalog.
+// Package registry 为各种 AI 服务提供方提供模型定义，本文件存储静态模型元数据目录。
 package registry
 
 // GetClaudeModels returns the standard Claude model definitions

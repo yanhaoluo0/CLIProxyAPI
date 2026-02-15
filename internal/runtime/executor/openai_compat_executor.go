@@ -20,23 +20,21 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// OpenAICompatExecutor implements a stateless executor for OpenAI-compatible providers.
-// It performs request/response translation and executes against the provider base URL
-// using per-auth credentials (API key) and per-auth HTTP transport (proxy) from context.
+// OpenAICompatExecutor 为 OpenAI 兼容提供方实现无状态执行器，在提供方 base URL 上做请求/响应转换，使用上下文中的按认证凭证与 HTTP 传输（代理）。
 type OpenAICompatExecutor struct {
 	provider string
 	cfg      *config.Config
 }
 
-// NewOpenAICompatExecutor creates an executor bound to a provider key (e.g., "openrouter").
+// NewOpenAICompatExecutor 创建绑定到提供方 key（如 "openrouter"）的执行器。
 func NewOpenAICompatExecutor(provider string, cfg *config.Config) *OpenAICompatExecutor {
 	return &OpenAICompatExecutor{provider: provider, cfg: cfg}
 }
 
-// Identifier implements cliproxyauth.ProviderExecutor.
+// Identifier 实现 cliproxyauth.ProviderExecutor。
 func (e *OpenAICompatExecutor) Identifier() string { return e.provider }
 
-// PrepareRequest injects OpenAI-compatible credentials into the outgoing HTTP request.
+// PrepareRequest 将 OpenAI 兼容凭证注入出站 HTTP 请求。
 func (e *OpenAICompatExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -53,10 +51,10 @@ func (e *OpenAICompatExecutor) PrepareRequest(req *http.Request, auth *cliproxya
 	return nil
 }
 
-// HttpRequest injects OpenAI-compatible credentials into the request and executes it.
+// HttpRequest 将 OpenAI 兼容凭证注入请求并执行。
 func (e *OpenAICompatExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("openai compat executor: request is nil")
+		return nil, fmt.Errorf("openai compat 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -149,7 +147,7 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("openai compat executor: close response body error: %v", errClose)
+			log.Errorf("openai compat 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -252,7 +250,7 @@ func (e *OpenAICompatExecutor) ExecuteStream(ctx context.Context, auth *cliproxy
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("openai compat executor: close response body error: %v", errClose)
+			log.Errorf("openai compat 执行器: 关闭响应体错误: %v", errClose)
 		}
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return nil, err
@@ -263,7 +261,7 @@ func (e *OpenAICompatExecutor) ExecuteStream(ctx context.Context, auth *cliproxy
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("openai compat executor: close response body error: %v", errClose)
+				log.Errorf("openai compat 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -317,12 +315,12 @@ func (e *OpenAICompatExecutor) CountTokens(ctx context.Context, auth *cliproxyau
 
 	enc, err := tokenizerForModel(modelForCounting)
 	if err != nil {
-		return cliproxyexecutor.Response{}, fmt.Errorf("openai compat executor: tokenizer init failed: %w", err)
+		return cliproxyexecutor.Response{}, fmt.Errorf("openai compat 执行器: 分词器初始化失败: %w", err)
 	}
 
 	count, err := countOpenAIChatTokens(enc, translated)
 	if err != nil {
-		return cliproxyexecutor.Response{}, fmt.Errorf("openai compat executor: token counting failed: %w", err)
+		return cliproxyexecutor.Response{}, fmt.Errorf("openai compat 执行器: 计 token 失败: %w", err)
 	}
 
 	usageJSON := buildOpenAIUsageJSON(count)
@@ -330,9 +328,9 @@ func (e *OpenAICompatExecutor) CountTokens(ctx context.Context, auth *cliproxyau
 	return cliproxyexecutor.Response{Payload: []byte(translatedUsage)}, nil
 }
 
-// Refresh is a no-op for API-key based compatibility providers.
+// Refresh 对基于 API key 的兼容提供方为 no-op。
 func (e *OpenAICompatExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
-	log.Debugf("openai compat executor: refresh called")
+	log.Debugf("openai compat 执行器: 已调用 refresh")
 	_ = ctx
 	return auth, nil
 }

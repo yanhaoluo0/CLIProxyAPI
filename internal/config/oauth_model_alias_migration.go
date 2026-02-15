@@ -7,8 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// antigravityModelConversionTable maps old built-in aliases to actual model names
-// for the antigravity channel during migration.
+// antigravityModelConversionTable 在迁移时将 antigravity 渠道的旧内置别名映射为实际模型名。
 var antigravityModelConversionTable = map[string]string{
 	"gemini-2.5-computer-use-preview-10-2025": "rev19-uic3-1p",
 	"gemini-3-pro-image-preview":              "gemini-3-pro-image",
@@ -20,8 +19,7 @@ var antigravityModelConversionTable = map[string]string{
 	"gemini-claude-opus-4-6-thinking":         "claude-opus-4-6-thinking",
 }
 
-// defaultAntigravityAliases returns the default oauth-model-alias configuration
-// for the antigravity channel when neither field exists.
+// defaultAntigravityAliases 在配置中不存在 oauth-model-alias 与 oauth-model-mappings 时，返回 antigravity 渠道的默认 oauth-model-alias。
 func defaultAntigravityAliases() []OAuthModelAlias {
 	return []OAuthModelAlias{
 		{Name: "rev19-uic3-1p", Alias: "gemini-2.5-computer-use-preview-10-2025"},
@@ -35,15 +33,8 @@ func defaultAntigravityAliases() []OAuthModelAlias {
 	}
 }
 
-// MigrateOAuthModelAlias checks for and performs migration from oauth-model-mappings
-// to oauth-model-alias at startup. Returns true if migration was performed.
-//
-// Migration flow:
-// 1. Check if oauth-model-alias exists -> skip migration
-// 2. Check if oauth-model-mappings exists -> convert and migrate
-//   - For antigravity channel, convert old built-in aliases to actual model names
-//
-// 3. Neither exists -> add default antigravity config
+// MigrateOAuthModelAlias 在启动时检查并执行从 oauth-model-mappings 到 oauth-model-alias 的迁移，若执行了迁移则返回 true。
+// 流程：若已存在 oauth-model-alias 则跳过；若存在 oauth-model-mappings 则转换并迁移（antigravity 会转换旧内置别名）；若两者都不存在则写入默认 antigravity 配置。
 func MigrateOAuthModelAlias(configFile string) (bool, error) {
 	data, err := os.ReadFile(configFile)
 	if err != nil {
@@ -56,7 +47,6 @@ func MigrateOAuthModelAlias(configFile string) (bool, error) {
 		return false, nil
 	}
 
-	// Parse YAML into node tree to preserve structure
 	var root yaml.Node
 	if err := yaml.Unmarshal(data, &root); err != nil {
 		return false, nil
@@ -69,23 +59,18 @@ func MigrateOAuthModelAlias(configFile string) (bool, error) {
 		return false, nil
 	}
 
-	// Check if oauth-model-alias already exists
 	if findMapKeyIndex(rootMap, "oauth-model-alias") >= 0 {
 		return false, nil
 	}
 
-	// Check if oauth-model-mappings exists
 	oldIdx := findMapKeyIndex(rootMap, "oauth-model-mappings")
 	if oldIdx >= 0 {
-		// Migrate from old field
 		return migrateFromOldField(configFile, &root, rootMap, oldIdx)
 	}
-
-	// Neither field exists - add default antigravity config
 	return addDefaultAntigravityConfig(configFile, &root, rootMap)
 }
 
-// migrateFromOldField converts oauth-model-mappings to oauth-model-alias
+// migrateFromOldField 将 oauth-model-mappings 转为 oauth-model-alias 并写回。
 func migrateFromOldField(configFile string, root *yaml.Node, rootMap *yaml.Node, oldIdx int) (bool, error) {
 	if oldIdx+1 >= len(rootMap.Content) {
 		return false, nil
@@ -95,10 +80,8 @@ func migrateFromOldField(configFile string, root *yaml.Node, rootMap *yaml.Node,
 		return false, nil
 	}
 
-	// Parse the old aliases
 	oldAliases := parseOldAliasNode(oldValue)
 	if len(oldAliases) == 0 {
-		// Remove the old field and write
 		removeMapKeyByIndex(rootMap, oldIdx)
 		return writeYAMLNode(configFile, root)
 	}
@@ -113,7 +96,6 @@ func migrateFromOldField(configFile string, root *yaml.Node, rootMap *yaml.Node,
 				Alias: entry.Alias,
 				Fork:  entry.Fork,
 			}
-			// Convert model names for antigravity channel
 			if strings.EqualFold(channel, "antigravity") {
 				if actual, ok := antigravityModelConversionTable[entry.Name]; ok {
 					newEntry.Name = actual

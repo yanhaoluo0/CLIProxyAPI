@@ -1,6 +1,6 @@
-// Package main provides the entry point for the CLI Proxy API server.
-// This server acts as a proxy that provides OpenAI/Gemini/Claude compatible API interfaces
-// for CLI models, allowing CLI models to be used with tools and libraries designed for standard AI APIs.
+// Package main 提供 CLI Proxy API 服务端入口。
+// 本服务作为代理，为 CLI 模型提供 OpenAI/Gemini/Claude 兼容的 API 接口，
+// 使 CLI 模型可与面向标准 AI API 的工具和库配合使用。
 package main
 
 import (
@@ -39,7 +39,7 @@ var (
 	DefaultConfigPath = ""
 )
 
-// init initializes the shared logger setup.
+// init 初始化全局日志。
 func init() {
 	logging.SetupBaseLogger()
 	buildinfo.Version = Version
@@ -47,13 +47,11 @@ func init() {
 	buildinfo.BuildDate = BuildDate
 }
 
-// main is the entry point of the application.
-// It parses command-line flags, loads configuration, and starts the appropriate
-// service based on the provided flags (login, codex-login, or server mode).
+// main 为程序入口：解析命令行参数、加载配置，并根据参数（login、codex-login 或服务模式）启动相应逻辑。
 func main() {
 	fmt.Printf("CLIProxyAPI Version: %s, Commit: %s, BuiltAt: %s\n", buildinfo.Version, buildinfo.Commit, buildinfo.BuildDate)
 
-	// Command-line flags to control the application's behavior.
+	// 命令行参数，用于控制运行模式。
 	var login bool
 	var codexLogin bool
 	var claudeLogin bool
@@ -69,25 +67,25 @@ func main() {
 	var configPath string
 	var password string
 
-	// Define command-line flags for different operation modes.
-	flag.BoolVar(&login, "login", false, "Login Google Account")
-	flag.BoolVar(&codexLogin, "codex-login", false, "Login to Codex using OAuth")
-	flag.BoolVar(&claudeLogin, "claude-login", false, "Login to Claude using OAuth")
-	flag.BoolVar(&qwenLogin, "qwen-login", false, "Login to Qwen using OAuth")
-	flag.BoolVar(&iflowLogin, "iflow-login", false, "Login to iFlow using OAuth")
-	flag.BoolVar(&iflowCookie, "iflow-cookie", false, "Login to iFlow using Cookie")
-	flag.BoolVar(&noBrowser, "no-browser", false, "Don't open browser automatically for OAuth")
-	flag.IntVar(&oauthCallbackPort, "oauth-callback-port", 0, "Override OAuth callback port (defaults to provider-specific port)")
-	flag.BoolVar(&antigravityLogin, "antigravity-login", false, "Login to Antigravity using OAuth")
-	flag.BoolVar(&kimiLogin, "kimi-login", false, "Login to Kimi using OAuth")
-	flag.StringVar(&projectID, "project_id", "", "Project ID (Gemini only, not required)")
-	flag.StringVar(&configPath, "config", DefaultConfigPath, "Configure File Path")
-	flag.StringVar(&vertexImport, "vertex-import", "", "Import Vertex service account key JSON file")
+	// 各运行模式对应的命令行参数。
+	flag.BoolVar(&login, "login", false, "使用 Google 账号登录")
+	flag.BoolVar(&codexLogin, "codex-login", false, "使用 OAuth 登录 Codex")
+	flag.BoolVar(&claudeLogin, "claude-login", false, "使用 OAuth 登录 Claude")
+	flag.BoolVar(&qwenLogin, "qwen-login", false, "使用 OAuth 登录 Qwen")
+	flag.BoolVar(&iflowLogin, "iflow-login", false, "使用 OAuth 登录 iFlow")
+	flag.BoolVar(&iflowCookie, "iflow-cookie", false, "使用 Cookie 登录 iFlow")
+	flag.BoolVar(&noBrowser, "no-browser", false, "OAuth 时不自动打开浏览器")
+	flag.IntVar(&oauthCallbackPort, "oauth-callback-port", 0, "覆盖 OAuth 回调端口（默认按厂商取值）")
+	flag.BoolVar(&antigravityLogin, "antigravity-login", false, "使用 OAuth 登录 Antigravity")
+	flag.BoolVar(&kimiLogin, "kimi-login", false, "使用 OAuth 登录 Kimi")
+	flag.StringVar(&projectID, "project_id", "", "项目 ID（仅 Gemini，可选）")
+	flag.StringVar(&configPath, "config", DefaultConfigPath, "配置文件路径")
+	flag.StringVar(&vertexImport, "vertex-import", "", "导入 Vertex 服务账号密钥 JSON 文件")
 	flag.StringVar(&password, "password", "", "")
 
 	flag.CommandLine.Usage = func() {
 		out := flag.CommandLine.Output()
-		_, _ = fmt.Fprintf(out, "Usage of %s\n", os.Args[0])
+		_, _ = fmt.Fprintf(out, "用法: %s\n", os.Args[0])
 		flag.CommandLine.VisitAll(func(f *flag.Flag) {
 			if f.Name == "password" {
 				return
@@ -106,16 +104,16 @@ func main() {
 				s += unquoteUsage
 			}
 			if f.DefValue != "" && f.DefValue != "false" && f.DefValue != "0" {
-				s += fmt.Sprintf(" (default %s)", f.DefValue)
+				s += fmt.Sprintf(" (默认 %s)", f.DefValue)
 			}
 			_, _ = fmt.Fprint(out, s+"\n")
 		})
 	}
 
-	// Parse the command-line flags.
+	// 解析命令行参数。
 	flag.Parse()
 
-	// Core application variables.
+	// 应用核心变量。
 	var err error
 	var cfg *config.Config
 	var isCloudDeploy bool
@@ -143,14 +141,14 @@ func main() {
 
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Errorf("failed to get working directory: %v", err)
+		log.Errorf("获取工作目录失败: %v", err)
 		return
 	}
 
-	// Load environment variables from .env if present.
+	// 若存在 .env 则加载环境变量。
 	if errLoad := godotenv.Load(filepath.Join(wd, ".env")); errLoad != nil {
 		if !errors.Is(errLoad, os.ErrNotExist) {
-			log.WithError(errLoad).Warn("failed to load .env file")
+			log.WithError(errLoad).Warn("加载 .env 文件失败")
 		}
 	}
 
@@ -215,15 +213,13 @@ func main() {
 		objectStoreLocalPath = value
 	}
 
-	// Check for cloud deploy mode only on first execution
-	// Read env var name in uppercase: DEPLOY
+	// 仅在首次执行时判断是否为云部署模式（环境变量 DEPLOY，大写）。
 	deployEnv := os.Getenv("DEPLOY")
 	if deployEnv == "cloud" {
 		isCloudDeploy = true
 	}
 
-	// Determine and load the configuration file.
-	// Prefer the Postgres store when configured, otherwise fallback to git or local files.
+	// 确定并加载配置文件：若已配置则优先使用 Postgres 存储，否则回退到 git 或本地文件。
 	var configFilePath string
 	if usePostgresStore {
 		if pgStoreLocalPath == "" {
@@ -238,14 +234,14 @@ func main() {
 		})
 		cancel()
 		if err != nil {
-			log.Errorf("failed to initialize postgres token store: %v", err)
+			log.Errorf("初始化 Postgres 令牌存储失败: %v", err)
 			return
 		}
 		examplePath := filepath.Join(wd, "config.example.yaml")
 		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 		if errBootstrap := pgStoreInst.Bootstrap(ctx, examplePath); errBootstrap != nil {
 			cancel()
-			log.Errorf("failed to bootstrap postgres-backed config: %v", errBootstrap)
+			log.Errorf("基于 Postgres 的配置引导失败: %v", errBootstrap)
 			return
 		}
 		cancel()
@@ -253,7 +249,7 @@ func main() {
 		cfg, err = config.LoadConfigOptional(configFilePath, isCloudDeploy)
 		if err == nil {
 			cfg.AuthDir = pgStoreInst.AuthDir()
-			log.Infof("postgres-backed token store enabled, workspace path: %s", pgStoreInst.WorkDir())
+			log.Infof("已启用基于 Postgres 的令牌存储，工作目录: %s", pgStoreInst.WorkDir())
 		}
 	} else if useObjectStore {
 		if objectStoreLocalPath == "" {
@@ -269,7 +265,7 @@ func main() {
 		if strings.Contains(resolvedEndpoint, "://") {
 			parsed, errParse := url.Parse(resolvedEndpoint)
 			if errParse != nil {
-				log.Errorf("failed to parse object store endpoint %q: %v", objectStoreEndpoint, errParse)
+				log.Errorf("解析对象存储端点 %q 失败: %v", objectStoreEndpoint, errParse)
 				return
 			}
 			switch strings.ToLower(parsed.Scheme) {
@@ -278,11 +274,11 @@ func main() {
 			case "https":
 				useSSL = true
 			default:
-				log.Errorf("unsupported object store scheme %q (only http and https are allowed)", parsed.Scheme)
+				log.Errorf("不支持的对象存储协议 %q（仅允许 http 与 https）", parsed.Scheme)
 				return
 			}
 			if parsed.Host == "" {
-				log.Errorf("object store endpoint %q is missing host information", objectStoreEndpoint)
+				log.Errorf("对象存储端点 %q 缺少主机信息", objectStoreEndpoint)
 				return
 			}
 			resolvedEndpoint = parsed.Host
@@ -302,14 +298,14 @@ func main() {
 		}
 		objectStoreInst, err = store.NewObjectTokenStore(objCfg)
 		if err != nil {
-			log.Errorf("failed to initialize object token store: %v", err)
+			log.Errorf("初始化对象存储令牌存储失败: %v", err)
 			return
 		}
 		examplePath := filepath.Join(wd, "config.example.yaml")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		if errBootstrap := objectStoreInst.Bootstrap(ctx, examplePath); errBootstrap != nil {
 			cancel()
-			log.Errorf("failed to bootstrap object-backed config: %v", errBootstrap)
+			log.Errorf("基于对象存储的配置引导失败: %v", errBootstrap)
 			return
 		}
 		cancel()
@@ -320,7 +316,7 @@ func main() {
 				cfg = &config.Config{}
 			}
 			cfg.AuthDir = objectStoreInst.AuthDir()
-			log.Infof("object-backed token store enabled, bucket: %s", objectStoreBucket)
+			log.Infof("已启用基于对象存储的令牌存储，桶: %s", objectStoreBucket)
 		}
 	} else if useGitStore {
 		if gitStoreLocalPath == "" {
@@ -335,7 +331,7 @@ func main() {
 		gitStoreInst = store.NewGitTokenStore(gitStoreRemoteURL, gitStoreUser, gitStorePassword)
 		gitStoreInst.SetBaseDir(authDir)
 		if errRepo := gitStoreInst.EnsureRepository(); errRepo != nil {
-			log.Errorf("failed to prepare git token store: %v", errRepo)
+			log.Errorf("准备 Git 令牌存储失败: %v", errRepo)
 			return
 		}
 		configFilePath = gitStoreInst.ConfigPath()
@@ -345,26 +341,26 @@ func main() {
 		if _, statErr := os.Stat(configFilePath); errors.Is(statErr, fs.ErrNotExist) {
 			examplePath := filepath.Join(wd, "config.example.yaml")
 			if _, errExample := os.Stat(examplePath); errExample != nil {
-				log.Errorf("failed to find template config file: %v", errExample)
+				log.Errorf("未找到模板配置文件: %v", errExample)
 				return
 			}
 			if errCopy := misc.CopyConfigTemplate(examplePath, configFilePath); errCopy != nil {
-				log.Errorf("failed to bootstrap git-backed config: %v", errCopy)
+				log.Errorf("基于 Git 的配置引导失败: %v", errCopy)
 				return
 			}
 			if errCommit := gitStoreInst.PersistConfig(context.Background()); errCommit != nil {
-				log.Errorf("failed to commit initial git-backed config: %v", errCommit)
+				log.Errorf("提交初始 Git 配置失败: %v", errCommit)
 				return
 			}
-			log.Infof("git-backed config initialized from template: %s", configFilePath)
+			log.Infof("已从模板初始化基于 Git 的配置: %s", configFilePath)
 		} else if statErr != nil {
-			log.Errorf("failed to inspect git-backed config: %v", statErr)
+			log.Errorf("检查基于 Git 的配置失败: %v", statErr)
 			return
 		}
 		cfg, err = config.LoadConfigOptional(configFilePath, isCloudDeploy)
 		if err == nil {
 			cfg.AuthDir = gitStoreInst.AuthDir()
-			log.Infof("git-backed token store enabled, repository path: %s", gitStoreRoot)
+			log.Infof("已启用基于 Git 的令牌存储，仓库路径: %s", gitStoreRoot)
 		}
 	} else if configPath != "" {
 		configFilePath = configPath
@@ -372,37 +368,34 @@ func main() {
 	} else {
 		wd, err = os.Getwd()
 		if err != nil {
-			log.Errorf("failed to get working directory: %v", err)
+			log.Errorf("获取工作目录失败: %v", err)
 			return
 		}
 		configFilePath = filepath.Join(wd, "config.yaml")
 		cfg, err = config.LoadConfigOptional(configFilePath, isCloudDeploy)
 	}
 	if err != nil {
-		log.Errorf("failed to load config: %v", err)
+		log.Errorf("加载配置失败: %v", err)
 		return
 	}
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
 
-	// In cloud deploy mode, check if we have a valid configuration
+	// 云部署模式下检查是否已有有效配置。
 	var configFileExists bool
 	if isCloudDeploy {
 		if info, errStat := os.Stat(configFilePath); errStat != nil {
-			// Don't mislead: API server will not start until configuration is provided.
-			log.Info("Cloud deploy mode: No configuration file detected; standing by for configuration")
+			log.Info("云部署模式：未检测到配置文件，等待配置")
 			configFileExists = false
 		} else if info.IsDir() {
-			log.Info("Cloud deploy mode: Config path is a directory; standing by for configuration")
+			log.Info("云部署模式：配置路径为目录，等待配置")
 			configFileExists = false
 		} else if cfg.Port == 0 {
-			// LoadConfigOptional returns empty config when file is empty or invalid.
-			// Config file exists but is empty or invalid; treat as missing config
-			log.Info("Cloud deploy mode: Configuration file is empty or invalid; standing by for valid configuration")
+			log.Info("云部署模式：配置文件为空或无效，等待有效配置")
 			configFileExists = false
 		} else {
-			log.Info("Cloud deploy mode: Configuration file detected; starting service")
+			log.Info("云部署模式：已检测到配置文件，启动服务")
 			configFileExists = true
 		}
 	}
@@ -410,7 +403,7 @@ func main() {
 	coreauth.SetQuotaCooldownDisabled(cfg.DisableCooling)
 
 	if err = logging.ConfigureLogOutput(cfg); err != nil {
-		log.Errorf("failed to configure log output: %v", err)
+		log.Errorf("配置日志输出失败: %v", err)
 		return
 	}
 
@@ -420,20 +413,20 @@ func main() {
 	util.SetLogLevel(cfg)
 
 	if resolvedAuthDir, errResolveAuthDir := util.ResolveAuthDir(cfg.AuthDir); errResolveAuthDir != nil {
-		log.Errorf("failed to resolve auth directory: %v", errResolveAuthDir)
+		log.Errorf("解析认证目录失败: %v", errResolveAuthDir)
 		return
 	} else {
 		cfg.AuthDir = resolvedAuthDir
 	}
 	managementasset.SetCurrentConfig(cfg)
 
-	// Create login options to be used in authentication flows.
+	// 供各认证流程使用的登录选项。
 	options := &cmd.LoginOptions{
 		NoBrowser:    noBrowser,
 		CallbackPort: oauthCallbackPort,
 	}
 
-	// Register the shared token store once so all components use the same persistence backend.
+	// 注册全局令牌存储，使各组件共用同一持久化后端。
 	if usePostgresStore {
 		sdkAuth.RegisterTokenStore(pgStoreInst)
 	} else if useObjectStore {
@@ -444,25 +437,19 @@ func main() {
 		sdkAuth.RegisterTokenStore(sdkAuth.NewFileTokenStore())
 	}
 
-	// Register built-in access providers before constructing services.
+	// 在构建服务前注册内置访问提供方。
 	configaccess.Register(&cfg.SDKConfig)
 
-	// Handle different command modes based on the provided flags.
-
+	// 根据命令行参数进入对应模式。
 	if vertexImport != "" {
-		// Handle Vertex service account import
 		cmd.DoVertexImport(cfg, vertexImport)
 	} else if login {
-		// Handle Google/Gemini login
 		cmd.DoLogin(cfg, projectID, options)
 	} else if antigravityLogin {
-		// Handle Antigravity login
 		cmd.DoAntigravityLogin(cfg, options)
 	} else if codexLogin {
-		// Handle Codex login
 		cmd.DoCodexLogin(cfg, options)
 	} else if claudeLogin {
-		// Handle Claude login
 		cmd.DoClaudeLogin(cfg, options)
 	} else if qwenLogin {
 		cmd.DoQwenLogin(cfg, options)
@@ -473,13 +460,10 @@ func main() {
 	} else if kimiLogin {
 		cmd.DoKimiLogin(cfg, options)
 	} else {
-		// In cloud deploy mode without config file, just wait for shutdown signals
 		if isCloudDeploy && !configFileExists {
-			// No config file available, just wait for shutdown
 			cmd.WaitForCloudDeploy()
 			return
 		}
-		// Start the main proxy service
 		managementasset.StartAutoUpdater(context.Background(), configFilePath)
 		cmd.StartService(cfg, configFilePath, password)
 	}

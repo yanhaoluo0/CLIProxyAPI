@@ -1,5 +1,4 @@
-// Package registry provides model definitions and lookup helpers for various AI providers.
-// Static model metadata is stored in model_definitions_static_data.go.
+// Package registry 为各种 AI 提供方提供模型定义与查找帮助，静态模型元数据存储在 model_definitions_static_data.go 中。
 package registry
 
 import (
@@ -7,8 +6,7 @@ import (
 	"strings"
 )
 
-// GetStaticModelDefinitionsByChannel returns static model definitions for a given channel/provider.
-// It returns nil when the channel is unknown.
+// GetStaticModelDefinitionsByChannel 返回给定通道/提供方的静态模型定义，未知通道返回 nil。
 //
 // Supported channels:
 //   - claude

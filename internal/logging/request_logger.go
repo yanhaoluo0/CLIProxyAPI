@@ -1,6 +1,5 @@
-// Package logging provides request logging functionality for the CLI Proxy API server.
-// It handles capturing and storing detailed HTTP request and response data when enabled
-// through configuration, supporting both regular and streaming responses.
+// Package logging 为 CLI Proxy API 提供请求日志能力。
+// 在配置启用时负责采集并存储 HTTP 请求与响应的详细数据，支持普通与流式响应。
 package logging
 
 import (
@@ -28,54 +27,29 @@ import (
 
 var requestLogID atomic.Uint64
 
-// RequestLogger defines the interface for logging HTTP requests and responses.
-// It provides methods for logging both regular and streaming HTTP request/response cycles.
+// RequestLogger 定义 HTTP 请求/响应日志接口，支持普通与流式请求的完整记录。
 type RequestLogger interface {
-	// LogRequest logs a complete non-streaming request/response cycle.
+	// LogRequest 记录一次完整的非流式请求/响应。
 	//
-	// Parameters:
-	//   - url: The request URL
-	//   - method: The HTTP method
-	//   - requestHeaders: The request headers
-	//   - body: The request body
-	//   - statusCode: The response status code
-	//   - responseHeaders: The response headers
-	//   - response: The raw response data
-	//   - apiRequest: The API request data
-	//   - apiResponse: The API response data
-	//   - requestID: Optional request ID for log file naming
-	//   - requestTimestamp: When the request was received
-	//   - apiResponseTimestamp: When the API response was received
-	//
-	// Returns:
-	//   - error: An error if logging fails, nil otherwise
+	// 参数: url 请求 URL；method HTTP 方法；requestHeaders 请求头；body 请求体；
+	// statusCode 响应状态码；responseHeaders 响应头；response 原始响应；apiRequest/apiResponse 解析后的 API 数据；
+	// apiResponseErrors 接口错误列表；requestID 可选请求 ID；requestTimestamp/apiResponseTimestamp 时间戳。
+	// 返回: 日志写入失败时返回 error，否则为 nil。
 	LogRequest(url, method string, requestHeaders map[string][]string, body []byte, statusCode int, responseHeaders map[string][]string, response, apiRequest, apiResponse []byte, apiResponseErrors []*interfaces.ErrorMessage, requestID string, requestTimestamp, apiResponseTimestamp time.Time) error
 
-	// LogStreamingRequest initiates logging for a streaming request and returns a writer for chunks.
+	// LogStreamingRequest 为流式请求开启日志并返回用于写入响应块的 writer。
 	//
-	// Parameters:
-	//   - url: The request URL
-	//   - method: The HTTP method
-	//   - headers: The request headers
-	//   - body: The request body
-	//   - requestID: Optional request ID for log file naming
-	//
-	// Returns:
-	//   - StreamingLogWriter: A writer for streaming response chunks
-	//   - error: An error if logging initialization fails, nil otherwise
+	// 参数: url、method、headers、body、requestID。
+	// 返回: StreamingLogWriter 与 error（初始化失败时非 nil）。
 	LogStreamingRequest(url, method string, headers map[string][]string, body []byte, requestID string) (StreamingLogWriter, error)
 
-	// IsEnabled returns whether request logging is currently enabled.
-	//
-	// Returns:
-	//   - bool: True if logging is enabled, false otherwise
+	// IsEnabled 返回当前是否启用请求日志。
 	IsEnabled() bool
 }
 
-// StreamingLogWriter handles real-time logging of streaming response chunks.
-// It provides methods for writing streaming response data asynchronously.
+// StreamingLogWriter 负责流式响应块的实时写入，提供异步写入方法。
 type StreamingLogWriter interface {
-	// WriteChunkAsync writes a response chunk asynchronously (non-blocking).
+	// WriteChunkAsync 异步（非阻塞）写入一块响应数据。
 	//
 	// Parameters:
 	//   - chunk: The response chunk to write
@@ -91,65 +65,34 @@ type StreamingLogWriter interface {
 	//   - error: An error if writing fails, nil otherwise
 	WriteStatus(status int, headers map[string][]string) error
 
-	// WriteAPIRequest writes the upstream API request details to the log.
-	// This should be called before WriteStatus to maintain proper log ordering.
-	//
-	// Parameters:
-	//   - apiRequest: The API request data (typically includes URL, headers, body sent upstream)
-	//
-	// Returns:
-	//   - error: An error if writing fails, nil otherwise
+	// WriteAPIRequest 将上游 API 请求详情写入日志，应在 WriteStatus 之前调用以保证顺序。
+	// 参数: apiRequest 为上游请求数据（通常含 URL、请求头、请求体）。返回: 写入失败时 error 非 nil。
 	WriteAPIRequest(apiRequest []byte) error
 
-	// WriteAPIResponse writes the upstream API response details to the log.
-	// This should be called after the streaming response is complete.
-	//
-	// Parameters:
-	//   - apiResponse: The API response data
-	//
-	// Returns:
-	//   - error: An error if writing fails, nil otherwise
+	// WriteAPIResponse 将上游 API 响应详情写入日志，应在流式响应结束后调用。
+	// 参数: apiResponse 为上游响应数据。返回: 写入失败时 error 非 nil。
 	WriteAPIResponse(apiResponse []byte) error
 
-	// SetFirstChunkTimestamp sets the TTFB timestamp captured when first chunk was received.
-	//
-	// Parameters:
-	//   - timestamp: The time when first response chunk was received
+	// SetFirstChunkTimestamp 设置收到首块响应时记录的 TTFB 时间戳。
 	SetFirstChunkTimestamp(timestamp time.Time)
 
-	// Close finalizes the log file and cleans up resources.
-	//
-	// Returns:
-	//   - error: An error if closing fails, nil otherwise
+	// Close 关闭日志文件并释放资源，失败时返回 error。
 	Close() error
 }
 
-// FileRequestLogger implements RequestLogger using file-based storage.
-// It provides file-based logging functionality for HTTP requests and responses.
+// FileRequestLogger 基于文件的 RequestLogger 实现，将 HTTP 请求/响应写入日志文件。
 type FileRequestLogger struct {
-	// enabled indicates whether request logging is currently enabled.
-	enabled bool
-
-	// logsDir is the directory where log files are stored.
-	logsDir string
-
-	// errorLogsMaxFiles limits the number of error log files retained.
-	errorLogsMaxFiles int
+	enabled           bool   // 是否启用请求日志
+	logsDir           string // 日志文件所在目录
+	errorLogsMaxFiles int    // 保留的错误日志文件数量上限
 }
 
-// NewFileRequestLogger creates a new file-based request logger.
+// NewFileRequestLogger 创建基于文件的请求日志器。
 //
-// Parameters:
-//   - enabled: Whether request logging should be enabled
-//   - logsDir: The directory where log files should be stored (can be relative)
-//   - configDir: The directory of the configuration file; when logsDir is
-//     relative, it will be resolved relative to this directory
-//   - errorLogsMaxFiles: Maximum number of error log files to retain (0 = no cleanup)
-//
-// Returns:
-//   - *FileRequestLogger: A new file-based request logger instance
+// 参数: enabled 是否启用；logsDir 日志目录（可为相对路径）；configDir 配置文件所在目录，logsDir 为相对路径时依此解析；
+// errorLogsMaxFiles 保留错误日志文件数上限，0 表示不清理。
 func NewFileRequestLogger(enabled bool, logsDir string, configDir string, errorLogsMaxFiles int) *FileRequestLogger {
-	// Resolve logsDir relative to the configuration file directory when it's not absolute.
+	// 当 logsDir 非绝对路径时，相对于配置文件目录解析
 	if !filepath.IsAbs(logsDir) {
 		// If configDir is provided, resolve logsDir relative to it.
 		if configDir != "" {

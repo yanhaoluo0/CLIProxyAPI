@@ -8,7 +8,7 @@ import (
 	"github.com/tiktoken-go/tokenizer"
 )
 
-// tokenizerForModel returns a tokenizer codec suitable for an OpenAI-style model id.
+// tokenizerForModel 返回适用于 OpenAI 风格 model id 的分词器 codec。
 func tokenizerForModel(model string) (tokenizer.Codec, error) {
 	sanitized := strings.ToLower(strings.TrimSpace(model))
 	switch {
@@ -37,10 +37,10 @@ func tokenizerForModel(model string) (tokenizer.Codec, error) {
 	}
 }
 
-// countOpenAIChatTokens approximates prompt tokens for OpenAI chat completions payloads.
+// countOpenAIChatTokens 估算 OpenAI chat completions payload 的 prompt token 数。
 func countOpenAIChatTokens(enc tokenizer.Codec, payload []byte) (int64, error) {
 	if enc == nil {
-		return 0, fmt.Errorf("encoder is nil")
+		return 0, fmt.Errorf("encoder 为 nil")
 	}
 	if len(payload) == 0 {
 		return 0, nil
@@ -69,7 +69,7 @@ func countOpenAIChatTokens(enc tokenizer.Codec, payload []byte) (int64, error) {
 	return int64(count), nil
 }
 
-// buildOpenAIUsageJSON returns a minimal usage structure understood by downstream translators.
+// buildOpenAIUsageJSON 返回下游翻译器可识别的最小 usage 结构。
 func buildOpenAIUsageJSON(count int64) []byte {
 	return []byte(fmt.Sprintf(`{"usage":{"prompt_tokens":%d,"completion_tokens":0,"total_tokens":%d}}`, count, count))
 }

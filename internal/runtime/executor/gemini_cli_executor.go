@@ -1,6 +1,4 @@
-// Package executor provides runtime execution capabilities for various AI service providers.
-// This file implements the Gemini CLI executor that talks to Cloud Code Assist endpoints
-// using OAuth credentials from auth metadata.
+// Package executor 为多种 AI 服务提供运行时执行能力，本文件实现使用 auth 元数据中 OAuth 凭证与 Cloud Code Assist 端点通信的 Gemini CLI 执行器。
 package executor
 
 import (
@@ -45,26 +43,20 @@ var geminiOAuthScopes = []string{
 	"https://www.googleapis.com/auth/userinfo.profile",
 }
 
-// GeminiCLIExecutor talks to the Cloud Code Assist endpoint using OAuth credentials from auth metadata.
+// GeminiCLIExecutor 使用 auth 元数据中的 OAuth 凭证与 Cloud Code Assist 端点通信。
 type GeminiCLIExecutor struct {
 	cfg *config.Config
 }
 
-// NewGeminiCLIExecutor creates a new Gemini CLI executor instance.
-//
-// Parameters:
-//   - cfg: The application configuration
-//
-// Returns:
-//   - *GeminiCLIExecutor: A new Gemini CLI executor instance
+// NewGeminiCLIExecutor 创建新的 Gemini CLI 执行器实例。
 func NewGeminiCLIExecutor(cfg *config.Config) *GeminiCLIExecutor {
 	return &GeminiCLIExecutor{cfg: cfg}
 }
 
-// Identifier returns the executor identifier.
+// Identifier 返回执行器标识。
 func (e *GeminiCLIExecutor) Identifier() string { return "gemini-cli" }
 
-// PrepareRequest injects Gemini CLI credentials into the outgoing HTTP request.
+// PrepareRequest 将 Gemini CLI 凭证注入出站 HTTP 请求。
 func (e *GeminiCLIExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -85,10 +77,10 @@ func (e *GeminiCLIExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth
 	return nil
 }
 
-// HttpRequest injects Gemini CLI credentials into the request and executes it.
+// HttpRequest 将 Gemini CLI 凭证注入请求并执行。
 func (e *GeminiCLIExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("gemini-cli executor: request is nil")
+		return nil, fmt.Errorf("gemini-cli 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -101,7 +93,7 @@ func (e *GeminiCLIExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.
 	return httpClient.Do(httpReq)
 }
 
-// Execute performs a non-streaming request to the Gemini CLI API.
+// Execute 对 Gemini CLI API 执行非流式请求。
 func (e *GeminiCLIExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (resp cliproxyexecutor.Response, err error) {
 	if opts.Alt == "responses/compact" {
 		return resp, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -212,7 +204,7 @@ func (e *GeminiCLIExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth
 
 		data, errRead := io.ReadAll(httpResp.Body)
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("gemini cli executor: close response body error: %v", errClose)
+			log.Errorf("gemini cli 执行器: 关闭响应体错误: %v", errClose)
 		}
 		recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
 		if errRead != nil {
@@ -234,9 +226,9 @@ func (e *GeminiCLIExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth
 		logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), data))
 		if httpResp.StatusCode == 429 {
 			if idx+1 < len(models) {
-				log.Debugf("gemini cli executor: rate limited, retrying with next model: %s", models[idx+1])
+				log.Debugf("gemini cli 执行器: 触发限流，使用下一个模型重试: %s", models[idx+1])
 			} else {
-				log.Debug("gemini cli executor: rate limited, no additional fallback model")
+				log.Debug("gemini cli 执行器: 触发限流，无其他回退模型")
 			}
 			continue
 		}
@@ -255,7 +247,7 @@ func (e *GeminiCLIExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth
 	return resp, err
 }
 
-// ExecuteStream performs a streaming request to the Gemini CLI API.
+// ExecuteStream 对 Gemini CLI API 执行流式请求。
 func (e *GeminiCLIExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (stream <-chan cliproxyexecutor.StreamChunk, err error) {
 	if opts.Alt == "responses/compact" {
 		return nil, statusErr{code: http.StatusNotImplemented, msg: "/responses/compact not supported"}
@@ -358,7 +350,7 @@ func (e *GeminiCLIExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
 		if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
 			data, errRead := io.ReadAll(httpResp.Body)
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("gemini cli executor: close response body error: %v", errClose)
+				log.Errorf("gemini cli 执行器: 关闭响应体错误: %v", errClose)
 			}
 			if errRead != nil {
 				recordAPIResponseError(ctx, e.cfg, errRead)
@@ -371,9 +363,9 @@ func (e *GeminiCLIExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
 			logWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), data))
 			if httpResp.StatusCode == 429 {
 				if idx+1 < len(models) {
-					log.Debugf("gemini cli executor: rate limited, retrying with next model: %s", models[idx+1])
+					log.Debugf("gemini cli 执行器: 触发限流，使用下一个模型重试: %s", models[idx+1])
 				} else {
-					log.Debug("gemini cli executor: rate limited, no additional fallback model")
+					log.Debug("gemini cli 执行器: 触发限流，无其他回退模型")
 				}
 				continue
 			}
@@ -387,7 +379,7 @@ func (e *GeminiCLIExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
 			defer close(out)
 			defer func() {
 				if errClose := resp.Body.Close(); errClose != nil {
-					log.Errorf("gemini cli executor: close response body error: %v", errClose)
+					log.Errorf("gemini cli 执行器: 关闭响应体错误: %v", errClose)
 				}
 			}()
 			if opts.Alt == "" {
@@ -454,7 +446,7 @@ func (e *GeminiCLIExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
 	return nil, err
 }
 
-// CountTokens counts tokens for the given request using the Gemini CLI API.
+// CountTokens 使用 Gemini CLI API 为给定请求计 token 数。
 func (e *GeminiCLIExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 
@@ -551,7 +543,7 @@ func (e *GeminiCLIExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.
 		lastStatus = resp.StatusCode
 		lastBody = append([]byte(nil), data...)
 		if resp.StatusCode == 429 {
-			log.Debugf("gemini cli executor: rate limited, retrying with next model")
+			log.Debugf("gemini cli 执行器: 触发限流，使用下一个模型重试")
 			continue
 		}
 		break
@@ -563,7 +555,7 @@ func (e *GeminiCLIExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.
 	return cliproxyexecutor.Response{}, newGeminiStatusErr(lastStatus, lastBody)
 }
 
-// Refresh refreshes the authentication credentials (no-op for Gemini CLI).
+// Refresh 刷新认证凭证（对 Gemini CLI 为 no-op）。
 func (e *GeminiCLIExecutor) Refresh(_ context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
 	return auth, nil
 }
@@ -571,7 +563,7 @@ func (e *GeminiCLIExecutor) Refresh(_ context.Context, auth *cliproxyauth.Auth) 
 func prepareGeminiCLITokenSource(ctx context.Context, cfg *config.Config, auth *cliproxyauth.Auth) (oauth2.TokenSource, map[string]any, error) {
 	metadata := geminiOAuthMetadata(auth)
 	if auth == nil || metadata == nil {
-		return nil, nil, fmt.Errorf("gemini-cli auth metadata missing")
+		return nil, nil, fmt.Errorf("缺少 gemini-cli auth 元数据")
 	}
 
 	var base map[string]any
@@ -738,7 +730,7 @@ func stringValue(m map[string]any, key string) string {
 	return ""
 }
 
-// applyGeminiCLIHeaders sets required headers for the Gemini CLI upstream.
+// applyGeminiCLIHeaders 为 Gemini CLI 上游设置必需的请求头。
 func applyGeminiCLIHeaders(r *http.Request) {
 	var ginHeaders http.Header
 	if ginCtx, ok := r.Context().Value("gin").(*gin.Context); ok && ginCtx != nil && ginCtx.Request != nil {
@@ -750,13 +742,13 @@ func applyGeminiCLIHeaders(r *http.Request) {
 	misc.EnsureHeader(r.Header, ginHeaders, "Client-Metadata", geminiCLIClientMetadata())
 }
 
-// geminiCLIClientMetadata returns a compact metadata string required by upstream.
+// geminiCLIClientMetadata 返回上游所需的紧凑元数据字符串。
 func geminiCLIClientMetadata() string {
 	// Keep parity with CLI client defaults
 	return "ideType=IDE_UNSPECIFIED,platform=PLATFORM_UNSPECIFIED,pluginType=GEMINI"
 }
 
-// cliPreviewFallbackOrder returns preview model candidates for a base model.
+// cliPreviewFallbackOrder 返回基础模型的预览模型候选列表。
 func cliPreviewFallbackOrder(model string) []string {
 	switch model {
 	case "gemini-2.5-pro":
@@ -778,7 +770,7 @@ func cliPreviewFallbackOrder(model string) []string {
 	}
 }
 
-// setJSONField sets a top-level JSON field on a byte slice payload via sjson.
+// setJSONField 通过 sjson 在字节切片 payload 上设置顶层 JSON 字段。
 func setJSONField(body []byte, key, value string) []byte {
 	if key == "" {
 		return body
@@ -790,7 +782,7 @@ func setJSONField(body []byte, key, value string) []byte {
 	return updated
 }
 
-// deleteJSONField removes a top-level key if present (best-effort) via sjson.
+// deleteJSONField 通过 sjson 移除顶层 key（尽力而为）。
 func deleteJSONField(body []byte, key string) []byte {
 	if key == "" || len(body) == 0 {
 		return body
@@ -854,9 +846,7 @@ func newGeminiStatusErr(statusCode int, body []byte) statusErr {
 	return err
 }
 
-// parseRetryDelay extracts the retry delay from a Google API 429 error response.
-// The error response contains a RetryInfo.retryDelay field in the format "0.847655010s".
-// Returns the parsed duration or an error if it cannot be determined.
+// parseRetryDelay 从 Google API 429 错误响应中提取重试延迟；响应中 RetryInfo.retryDelay 格式为 "0.847655010s"。
 func parseRetryDelay(errorBody []byte) (*time.Duration, error) {
 	// Try to parse the retryDelay from the error response
 	// Format: error.details[].retryDelay where @type == "type.googleapis.com/google.rpc.RetryInfo"
@@ -870,7 +860,7 @@ func parseRetryDelay(errorBody []byte) (*time.Duration, error) {
 					// Parse duration string like "0.847655010s"
 					duration, err := time.ParseDuration(retryDelay)
 					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration")
+						return nil, fmt.Errorf("解析时长失败")
 					}
 					return &duration, nil
 				}
@@ -904,5 +894,5 @@ func parseRetryDelay(errorBody []byte) (*time.Duration, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no RetryInfo found")
+	return nil, fmt.Errorf("未找到 RetryInfo")
 }

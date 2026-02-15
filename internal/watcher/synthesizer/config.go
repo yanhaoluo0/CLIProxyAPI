@@ -9,16 +9,15 @@ import (
 	coreauth "github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy/auth"
 )
 
-// ConfigSynthesizer generates Auth entries from configuration API keys.
-// It handles Gemini, Claude, Codex, OpenAI-compat, and Vertex-compat providers.
+// ConfigSynthesizer 从配置 API key 生成 Auth 认证条目，处理 Gemini、Claude、Codex、OpenAI-compat 和 Vertex-compat 提供方。
 type ConfigSynthesizer struct{}
 
-// NewConfigSynthesizer creates a new ConfigSynthesizer instance.
+// NewConfigSynthesizer 创建新的 ConfigSynthesizer 实例。
 func NewConfigSynthesizer() *ConfigSynthesizer {
 	return &ConfigSynthesizer{}
 }
 
-// Synthesize generates Auth entries from config API keys.
+// Synthesize 从配置 API key 生成 Auth 认证条目。
 func (s *ConfigSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth, error) {
 	out := make([]*coreauth.Auth, 0, 32)
 	if ctx == nil || ctx.Config == nil {
@@ -39,7 +38,7 @@ func (s *ConfigSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth,
 	return out, nil
 }
 
-// synthesizeGeminiKeys creates Auth entries for Gemini API keys.
+// synthesizeGeminiKeys 为 Gemini API key 创建 Auth 认证条目。
 func (s *ConfigSynthesizer) synthesizeGeminiKeys(ctx *SynthesisContext) []*coreauth.Auth {
 	cfg := ctx.Config
 	now := ctx.Now
@@ -87,7 +86,7 @@ func (s *ConfigSynthesizer) synthesizeGeminiKeys(ctx *SynthesisContext) []*corea
 	return out
 }
 
-// synthesizeClaudeKeys creates Auth entries for Claude API keys.
+// synthesizeClaudeKeys 为 Claude API key 创建 Auth 认证条目。
 func (s *ConfigSynthesizer) synthesizeClaudeKeys(ctx *SynthesisContext) []*coreauth.Auth {
 	cfg := ctx.Config
 	now := ctx.Now
@@ -135,7 +134,7 @@ func (s *ConfigSynthesizer) synthesizeClaudeKeys(ctx *SynthesisContext) []*corea
 	return out
 }
 
-// synthesizeCodexKeys creates Auth entries for Codex API keys.
+// synthesizeCodexKeys 为 Codex API key 创建 Auth 认证条目。
 func (s *ConfigSynthesizer) synthesizeCodexKeys(ctx *SynthesisContext) []*coreauth.Auth {
 	cfg := ctx.Config
 	now := ctx.Now
@@ -182,7 +181,7 @@ func (s *ConfigSynthesizer) synthesizeCodexKeys(ctx *SynthesisContext) []*coreau
 	return out
 }
 
-// synthesizeOpenAICompat creates Auth entries for OpenAI-compatible providers.
+// synthesizeOpenAICompat 为 OpenAI 兼容提供方创建 Auth 认证条目。
 func (s *ConfigSynthesizer) synthesizeOpenAICompat(ctx *SynthesisContext) []*coreauth.Auth {
 	cfg := ctx.Config
 	now := ctx.Now
@@ -275,7 +274,7 @@ func (s *ConfigSynthesizer) synthesizeOpenAICompat(ctx *SynthesisContext) []*cor
 	return out
 }
 
-// synthesizeVertexCompat creates Auth entries for Vertex-compatible providers.
+// synthesizeVertexCompat 为 Vertex 兼容提供方创建 Auth 认证条目。
 func (s *ConfigSynthesizer) synthesizeVertexCompat(ctx *SynthesisContext) []*coreauth.Auth {
 	cfg := ctx.Config
 	now := ctx.Now

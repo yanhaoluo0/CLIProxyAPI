@@ -24,7 +24,7 @@ const (
 	apiResponseKey = "API_RESPONSE"
 )
 
-// upstreamRequestLog captures the outbound upstream request details for logging.
+// upstreamRequestLog 记录出站上游请求详情供日志使用。
 type upstreamRequestLog struct {
 	URL       string
 	Method    string
@@ -49,7 +49,7 @@ type upstreamAttempt struct {
 	errorWritten         bool
 }
 
-// recordAPIRequest stores the upstream request metadata in Gin context for request logging.
+// recordAPIRequest 将上游请求元数据存入 Gin 上下文供请求日志使用。
 func recordAPIRequest(ctx context.Context, cfg *config.Config, info upstreamRequestLog) {
 	if cfg == nil || !cfg.RequestLog {
 		return
@@ -96,7 +96,7 @@ func recordAPIRequest(ctx context.Context, cfg *config.Config, info upstreamRequ
 	updateAggregatedRequest(ginCtx, attempts)
 }
 
-// recordAPIResponseMetadata captures upstream response status/header information for the latest attempt.
+// recordAPIResponseMetadata 记录最近一次尝试的上游响应状态与头信息。
 func recordAPIResponseMetadata(ctx context.Context, cfg *config.Config, status int, headers http.Header) {
 	if cfg == nil || !cfg.RequestLog {
 		return
@@ -122,7 +122,7 @@ func recordAPIResponseMetadata(ctx context.Context, cfg *config.Config, status i
 	updateAggregatedResponse(ginCtx, attempts)
 }
 
-// recordAPIResponseError adds an error entry for the latest attempt when no HTTP response is available.
+// recordAPIResponseError 在无 HTTP 响应时为最近一次尝试添加错误条目。
 func recordAPIResponseError(ctx context.Context, cfg *config.Config, err error) {
 	if cfg == nil || !cfg.RequestLog || err == nil {
 		return
@@ -147,7 +147,7 @@ func recordAPIResponseError(ctx context.Context, cfg *config.Config, err error) 
 	updateAggregatedResponse(ginCtx, attempts)
 }
 
-// appendAPIResponseChunk appends an upstream response chunk to Gin context for request logging.
+// appendAPIResponseChunk 将上游响应块追加到 Gin 上下文供请求日志使用。
 func appendAPIResponseChunk(ctx context.Context, cfg *config.Config, chunk []byte) {
 	if cfg == nil || !cfg.RequestLog {
 		return
@@ -368,7 +368,7 @@ func extractHTMLTitle(body []byte) string {
 	return strings.Join(strings.Fields(title), " ")
 }
 
-// extractJSONErrorMessage attempts to extract error.message from JSON error responses
+// extractJSONErrorMessage 尝试从 JSON 错误响应中提取 error.message。
 func extractJSONErrorMessage(body []byte) string {
 	result := gjson.GetBytes(body, "error.message")
 	if result.Exists() && result.String() != "" {
@@ -377,8 +377,7 @@ func extractJSONErrorMessage(body []byte) string {
 	return ""
 }
 
-// logWithRequestID returns a logrus Entry with request_id field populated from context.
-// If no request ID is found in context, it returns the standard logger.
+// logWithRequestID 从上下文填充 request_id 并返回 logrus Entry；无 request ID 时返回标准 logger。
 func logWithRequestID(ctx context.Context) *log.Entry {
 	if ctx == nil {
 		return log.NewEntry(log.StandardLogger())

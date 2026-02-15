@@ -1,6 +1,5 @@
-// Package cliproxy provides the core service implementation for the CLI Proxy API.
-// It includes service lifecycle management, authentication handling, file watching,
-// and integration with various AI service providers through a unified interface.
+// Package cliproxy 提供 CLI Proxy API 的核心服务实现，包含生命周期管理、认证处理、文件监听，
+// 以及通过统一接口与各种 AI 服务提供方的集成。
 package cliproxy
 
 import (
@@ -11,9 +10,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v6/sdk/config"
 )
 
-// TokenClientProvider loads clients backed by stored authentication tokens.
-// It provides an interface for loading authentication tokens from various sources
-// and creating clients for AI service providers.
+// TokenClientProvider 加载由存储认证令牌支持的客户端，提供从多种来源加载认证令牌并为 AI 服务提供方创建客户端的接口。
 type TokenClientProvider interface {
 	// Load loads token-based clients from the configured source.
 	//
@@ -27,15 +24,13 @@ type TokenClientProvider interface {
 	Load(ctx context.Context, cfg *config.Config) (*TokenClientResult, error)
 }
 
-// TokenClientResult represents clients generated from persisted tokens.
-// It contains metadata about the loading operation and the number of successful authentications.
+// TokenClientResult 表示从持久化令牌生成的客户端，包含加载操作的元数据与成功认证数。
 type TokenClientResult struct {
 	// SuccessfulAuthed is the number of successfully authenticated clients.
 	SuccessfulAuthed int
 }
 
-// APIKeyClientProvider loads clients backed directly by configured API keys.
-// It provides an interface for loading API key-based clients for various AI service providers.
+// APIKeyClientProvider 加载由配置 API key 直接支持的客户端，提供为各种 AI 服务提供方加载 API key 客户端的接口。
 type APIKeyClientProvider interface {
 	// Load loads API key-based clients from the configuration.
 	//
@@ -49,7 +44,7 @@ type APIKeyClientProvider interface {
 	Load(ctx context.Context, cfg *config.Config) (*APIKeyClientResult, error)
 }
 
-// APIKeyClientResult is returned by APIKeyClientProvider.Load()
+// APIKeyClientResult 由 APIKeyClientProvider.Load() 返回。
 type APIKeyClientResult struct {
 	// GeminiKeyCount is the number of Gemini API keys loaded
 	GeminiKeyCount int
@@ -67,20 +62,10 @@ type APIKeyClientResult struct {
 	OpenAICompatCount int
 }
 
-// WatcherFactory creates a watcher for configuration and token changes.
-// The reload callback receives the updated configuration when changes are detected.
-//
-// Parameters:
-//   - configPath: The path to the configuration file to watch
-//   - authDir: The directory containing authentication tokens to watch
-//   - reload: The callback function to call when changes are detected
-//
-// Returns:
-//   - *WatcherWrapper: A watcher wrapper instance
-//   - error: An error if watcher creation fails
+// WatcherFactory 为配置与令牌变更创建监听器，reload 回调在检测到变更时接收更新后的配置。
 type WatcherFactory func(configPath, authDir string, reload func(*config.Config)) (*WatcherWrapper, error)
 
-// WatcherWrapper exposes the subset of watcher methods required by the SDK.
+// WatcherWrapper 暴露 SDK 所需的监听器方法子集。
 type WatcherWrapper struct {
 	start func(ctx context.Context) error
 	stop  func() error
@@ -91,7 +76,7 @@ type WatcherWrapper struct {
 	dispatchRuntimeUpdate func(update watcher.AuthUpdate) bool
 }
 
-// Start proxies to the underlying watcher Start implementation.
+// Start 代理底层监听器 Start 实现。
 func (w *WatcherWrapper) Start(ctx context.Context) error {
 	if w == nil || w.start == nil {
 		return nil
@@ -99,7 +84,7 @@ func (w *WatcherWrapper) Start(ctx context.Context) error {
 	return w.start(ctx)
 }
 
-// Stop proxies to the underlying watcher Stop implementation.
+// Stop 代理底层监听器 Stop 实现。
 func (w *WatcherWrapper) Stop() error {
 	if w == nil || w.stop == nil {
 		return nil
@@ -107,7 +92,7 @@ func (w *WatcherWrapper) Stop() error {
 	return w.stop()
 }
 
-// SetConfig updates the watcher configuration cache.
+// SetConfig 更新监听器配置缓存。
 func (w *WatcherWrapper) SetConfig(cfg *config.Config) {
 	if w == nil || w.setConfig == nil {
 		return
@@ -115,9 +100,7 @@ func (w *WatcherWrapper) SetConfig(cfg *config.Config) {
 	w.setConfig(cfg)
 }
 
-// DispatchRuntimeAuthUpdate forwards runtime auth updates (e.g., websocket providers)
-// into the watcher-managed auth update queue when available.
-// Returns true if the update was enqueued successfully.
+// DispatchRuntimeAuthUpdate 在可用时将运行时认证更新（如 WebSocket 提供方）转发到监听器管理的认证更新队列。
 func (w *WatcherWrapper) DispatchRuntimeAuthUpdate(update watcher.AuthUpdate) bool {
 	if w == nil || w.dispatchRuntimeUpdate == nil {
 		return false
@@ -125,13 +108,11 @@ func (w *WatcherWrapper) DispatchRuntimeAuthUpdate(update watcher.AuthUpdate) bo
 	return w.dispatchRuntimeUpdate(update)
 }
 
-// SetClients updates the watcher file-backed clients registry.
-// SetClients and SetAPIKeyClients removed; watcher manages its own caches
+// SetClients 更新监听器文件支持的客户端注册表。
 
-// SnapshotClients returns the current combined clients snapshot from the underlying watcher.
-// SnapshotClients removed; use SnapshotAuths
+// SnapshotClients 返回底层监听器的当前组合客户端快照。
 
-// SnapshotAuths returns the current auth entries derived from legacy clients.
+// SnapshotAuths 返回从旧版客户端派生当前认证条目。
 func (w *WatcherWrapper) SnapshotAuths() []*coreauth.Auth {
 	if w == nil || w.snapshotAuths == nil {
 		return nil
@@ -139,7 +120,7 @@ func (w *WatcherWrapper) SnapshotAuths() []*coreauth.Auth {
 	return w.snapshotAuths()
 }
 
-// SetAuthUpdateQueue registers the channel used to propagate auth updates.
+// SetAuthUpdateQueue 注册用于传播认证更新的通道。
 func (w *WatcherWrapper) SetAuthUpdateQueue(queue chan<- watcher.AuthUpdate) {
 	if w == nil || w.setUpdateQueue == nil {
 		return

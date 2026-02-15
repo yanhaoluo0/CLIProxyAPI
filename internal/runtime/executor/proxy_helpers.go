@@ -14,19 +14,7 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-// newProxyAwareHTTPClient creates an HTTP client with proper proxy configuration priority:
-// 1. Use auth.ProxyURL if configured (highest priority)
-// 2. Use cfg.ProxyURL if auth proxy is not configured
-// 3. Use RoundTripper from context if neither are configured
-//
-// Parameters:
-//   - ctx: The context containing optional RoundTripper
-//   - cfg: The application configuration
-//   - auth: The authentication information
-//   - timeout: The client timeout (0 means no timeout)
-//
-// Returns:
-//   - *http.Client: An HTTP client with configured proxy or transport
+// newProxyAwareHTTPClient 按优先级创建 HTTP 客户端：1) auth.ProxyURL 2) cfg.ProxyURL 3) 上下文中的 RoundTripper；timeout 为 0 表示无超时。
 func newProxyAwareHTTPClient(ctx context.Context, cfg *config.Config, auth *cliproxyauth.Auth, timeout time.Duration) *http.Client {
 	httpClient := &http.Client{}
 	if timeout > 0 {
@@ -52,7 +40,7 @@ func newProxyAwareHTTPClient(ctx context.Context, cfg *config.Config, auth *clip
 			return httpClient
 		}
 		// If proxy setup failed, log and fall through to context RoundTripper
-		log.Debugf("failed to setup proxy from URL: %s, falling back to context transport", proxyURL)
+		log.Debugf("从 URL %s 配置代理失败，回退到上下文 transport", proxyURL)
 	}
 
 	// Priority 3: Use RoundTripper from context (typically from RoundTripperFor)
@@ -63,14 +51,7 @@ func newProxyAwareHTTPClient(ctx context.Context, cfg *config.Config, auth *clip
 	return httpClient
 }
 
-// buildProxyTransport creates an HTTP transport configured for the given proxy URL.
-// It supports SOCKS5, HTTP, and HTTPS proxy protocols.
-//
-// Parameters:
-//   - proxyURL: The proxy URL string (e.g., "socks5://user:pass@host:port", "http://host:port")
-//
-// Returns:
-//   - *http.Transport: A configured transport, or nil if the proxy URL is invalid
+// buildProxyTransport 为给定代理 URL 创建 HTTP transport，支持 SOCKS5、HTTP、HTTPS。
 func buildProxyTransport(proxyURL string) *http.Transport {
 	if proxyURL == "" {
 		return nil
@@ -78,7 +59,7 @@ func buildProxyTransport(proxyURL string) *http.Transport {
 
 	parsedURL, errParse := url.Parse(proxyURL)
 	if errParse != nil {
-		log.Errorf("parse proxy URL failed: %v", errParse)
+		log.Errorf("解析代理 URL 失败: %v", errParse)
 		return nil
 	}
 
@@ -95,7 +76,7 @@ func buildProxyTransport(proxyURL string) *http.Transport {
 		}
 		dialer, errSOCKS5 := proxy.SOCKS5("tcp", parsedURL.Host, proxyAuth, proxy.Direct)
 		if errSOCKS5 != nil {
-			log.Errorf("create SOCKS5 dialer failed: %v", errSOCKS5)
+			log.Errorf("创建 SOCKS5 dialer 失败: %v", errSOCKS5)
 			return nil
 		}
 		// Set up a custom transport using the SOCKS5 dialer
@@ -108,7 +89,7 @@ func buildProxyTransport(proxyURL string) *http.Transport {
 		// Configure HTTP or HTTPS proxy
 		transport = &http.Transport{Proxy: http.ProxyURL(parsedURL)}
 	} else {
-		log.Errorf("unsupported proxy scheme: %s", parsedURL.Scheme)
+		log.Errorf("不支持的代理协议: %s", parsedURL.Scheme)
 		return nil
 	}
 

@@ -12,10 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// ReconcileProviders builds the desired provider list by reusing existing providers when possible
-// and creating or removing providers only when their configuration changed. It returns the final
-// ordered provider slice along with the identifiers of providers that were added, updated, or
-// removed compared to the previous configuration.
+// ReconcileProviders 通过复用现有提供方并根据配置变化重建提供方列表，返回最终排序后的提供方切片及增删状态（哪些新增、更新、删除）。
 func ReconcileProviders(oldCfg, newCfg *config.Config, existing []sdkaccess.Provider) (result []sdkaccess.Provider, added, updated, removed []string, err error) {
 	_ = oldCfg
 	if newCfg == nil {

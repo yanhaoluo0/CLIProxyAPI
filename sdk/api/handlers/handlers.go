@@ -1,6 +1,4 @@
-// Package handlers provides core API handler functionality for the CLI Proxy API server.
-// It includes common types, client management, load balancing, and error handling
-// shared across all API endpoint handlers (OpenAI, Claude, Gemini).
+// Package handlers 为 CLI Proxy API 服务器提供核心 API 处理器功能，包含所有 API 端点处理器（OpenAI、Claude、Gemma）共享的通用类型、客户端管理、负载均衡与错误处理。
 package handlers
 
 import (
@@ -25,15 +23,13 @@ import (
 	"golang.org/x/net/context"
 )
 
-// ErrorResponse represents a standard error response format for the API.
-// It contains a single ErrorDetail field.
+// ErrorResponse 表示 API 的标准错误响应格式，包含单个 ErrorDetail 字段。
 type ErrorResponse struct {
 	// Error contains detailed information about the error that occurred.
 	Error ErrorDetail `json:"error"`
 }
 
-// ErrorDetail provides specific information about an error that occurred.
-// It includes a human-readable message, an error type, and an optional error code.
+// ErrorDetail 提供关于发生的错误的详细信息，包含人类可读消息、错误类型与可选错误码。
 type ErrorDetail struct {
 	// Message is a human-readable message providing more details about the error.
 	Message string `json:"message"`
@@ -47,7 +43,7 @@ type ErrorDetail struct {
 
 const idempotencyKeyMetadataKey = "idempotency_key"
 
-// requestHeadersFromContext returns the incoming request headers when ctx carries a gin context (e.g. for User-Agent filtering).
+// requestHeadersFromContext 当 ctx 携带 gin 上下文时返回入站请求头（如用于 User-Agent 过滤）。
 func requestHeadersFromContext(ctx context.Context) http.Header {
 	if ginCtx, ok := ctx.Value("gin").(*gin.Context); ok && ginCtx != nil && ginCtx.Request != nil {
 		return ginCtx.Request.Header
@@ -60,8 +56,7 @@ const (
 	defaultStreamingBootstrapRetries = 0
 )
 
-// BuildErrorResponseBody builds an OpenAI-compatible JSON error response body.
-// If errText is already valid JSON, it is returned as-is to preserve upstream error payloads.
+// BuildErrorResponseBody 构建 OpenAI 兼容的 JSON 错误响应体，若 errText 已是有效 JSON 则原样返回以保留上游错误载荷。
 func BuildErrorResponseBody(status int, errText string) []byte {
 	if status <= 0 {
 		status = http.StatusInternalServerError
@@ -110,8 +105,7 @@ func BuildErrorResponseBody(status int, errText string) []byte {
 	return payload
 }
 
-// StreamingKeepAliveInterval returns the SSE keep-alive interval for this server.
-// Returning 0 disables keep-alives (default when unset).
+// StreamingKeepAliveInterval 返回此服务器的 SSE keep-alive 间隔，返回 0 禁用 keep-alive（未设置时的默认值）。
 func StreamingKeepAliveInterval(cfg *config.SDKConfig) time.Duration {
 	seconds := defaultStreamingKeepAliveSeconds
 	if cfg != nil {
@@ -123,8 +117,7 @@ func StreamingKeepAliveInterval(cfg *config.SDKConfig) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
-// NonStreamingKeepAliveInterval returns the keep-alive interval for non-streaming responses.
-// Returning 0 disables keep-alives (default when unset).
+// NonStreamingKeepAliveInterval 返回非流式响应的 keep-alive 间隔，返回 0 禁用 keep-alive（未设置时的默认值）。
 func NonStreamingKeepAliveInterval(cfg *config.SDKConfig) time.Duration {
 	seconds := 0
 	if cfg != nil {
@@ -136,7 +129,7 @@ func NonStreamingKeepAliveInterval(cfg *config.SDKConfig) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
-// StreamingBootstrapRetries returns how many times a streaming request may be retried before any bytes are sent.
+// StreamingBootstrapRetries 返回流式请求在任何字节发送前可重试的次数。
 func StreamingBootstrapRetries(cfg *config.SDKConfig) int {
 	retries := defaultStreamingBootstrapRetries
 	if cfg != nil {
@@ -163,9 +156,7 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	return map[string]any{idempotencyKeyMetadataKey: key}
 }
 
-// BaseAPIHandler contains the handlers for API endpoints.
-// It holds a pool of clients to interact with the backend service and manages
-// load balancing, client selection, and configuration.
+// BaseAPIHandler 包含 API 端点的处理器，持有与后端服务交互的客户端池并管理负载均衡、客户端选择与配置。
 type BaseAPIHandler struct {
 	// AuthManager manages auth lifecycle and execution in the new architecture.
 	AuthManager *coreauth.Manager
@@ -174,15 +165,7 @@ type BaseAPIHandler struct {
 	Cfg *config.SDKConfig
 }
 
-// NewBaseAPIHandlers creates a new API handlers instance.
-// It takes a slice of clients and configuration as input.
-//
-// Parameters:
-//   - cliClients: A slice of AI service clients
-//   - cfg: The application configuration
-//
-// Returns:
-//   - *BaseAPIHandler: A new API handlers instance
+// NewBaseAPIHandlers 创建新的 API 处理器实例，输入为客户端切片与配置。
 func NewBaseAPIHandlers(cfg *config.SDKConfig, authManager *coreauth.Manager) *BaseAPIHandler {
 	return &BaseAPIHandler{
 		Cfg:         cfg,
@@ -190,22 +173,10 @@ func NewBaseAPIHandlers(cfg *config.SDKConfig, authManager *coreauth.Manager) *B
 	}
 }
 
-// UpdateClients updates the handlers' client list and configuration.
-// This method is called when the configuration or authentication tokens change.
-//
-// Parameters:
-//   - clients: The new slice of AI service clients
-//   - cfg: The new application configuration
+// UpdateClients 在配置或认证令牌变更时更新处理器的客户端列表与配置。
 func (h *BaseAPIHandler) UpdateClients(cfg *config.SDKConfig) { h.Cfg = cfg }
 
-// GetAlt extracts the 'alt' parameter from the request query string.
-// It checks both 'alt' and '$alt' parameters and returns the appropriate value.
-//
-// Parameters:
-//   - c: The Gin context containing the HTTP request
-//
-// Returns:
-//   - string: The alt parameter value, or empty string if it's "sse"
+// GetAlt 从请求查询字符串提取 'alt' 参数，同时检查 'alt' 与 '$alt' 参数，返回相应值。
 func (h *BaseAPIHandler) GetAlt(c *gin.Context) string {
 	var alt string
 	var hasAlt bool
@@ -219,18 +190,7 @@ func (h *BaseAPIHandler) GetAlt(c *gin.Context) string {
 	return alt
 }
 
-// GetContextWithCancel creates a new context with cancellation capabilities.
-// It embeds the Gin context and the API handler into the new context for later use.
-// The returned cancel function also handles logging the API response if request logging is enabled.
-//
-// Parameters:
-//   - handler: The API handler associated with the request.
-//   - c: The Gin context of the current request.
-//   - ctx: The parent context (caller values/deadlines are preserved; request context adds cancellation and request ID).
-//
-// Returns:
-//   - context.Context: The new context with cancellation and embedded values.
-//   - APIHandlerCancelFunc: A function to cancel the context and log the response.
+// GetContextWithCancel 创建带取消能力的新上下文，嵌入 Gin 上下文与 API 处理器到新上下文中供后续使用，返回的 cancel 函数在请求日志启用时也处理日志记录。
 func (h *BaseAPIHandler) GetContextWithCancel(handler interfaces.APIHandler, c *gin.Context, ctx context.Context) (context.Context, APIHandlerCancelFunc) {
 	parentCtx := ctx
 	if parentCtx == nil {
@@ -302,8 +262,7 @@ func (h *BaseAPIHandler) GetContextWithCancel(handler interfaces.APIHandler, c *
 	}
 }
 
-// StartNonStreamingKeepAlive emits blank lines every 5 seconds while waiting for a non-streaming response.
-// It returns a stop function that must be called before writing the final response.
+// StartNonStreamingKeepAlive 在等待非流式响应时每 5 秒发送空白行，返回必须在写入最终响应前调用的停止函数。
 func (h *BaseAPIHandler) StartNonStreamingKeepAlive(c *gin.Context, ctx context.Context) func() {
 	if h == nil || c == nil {
 		return func() {}
@@ -349,7 +308,7 @@ func (h *BaseAPIHandler) StartNonStreamingKeepAlive(c *gin.Context, ctx context.
 	}
 }
 
-// appendAPIResponse preserves any previously captured API response and appends new data.
+// appendAPIResponse 保留之前捕获的 API 响应并追加新数据。
 func appendAPIResponse(c *gin.Context, data []byte) {
 	if c == nil || len(data) == 0 {
 		return
@@ -376,8 +335,7 @@ func appendAPIResponse(c *gin.Context, data []byte) {
 	c.Set("API_RESPONSE", bytes.Clone(data))
 }
 
-// ExecuteWithAuthManager executes a non-streaming request via the core auth manager.
-// This path is the only supported execution route.
+// ExecuteWithAuthManager 通过核心认证管理器执行非流式请求，此路径是唯一支持的执行路由。
 func (h *BaseAPIHandler) ExecuteWithAuthManager(ctx context.Context, handlerType, modelName string, rawJSON []byte, alt string) ([]byte, *interfaces.ErrorMessage) {
 	providers, normalizedModel, errMsg := h.getRequestDetails(modelName)
 	if errMsg != nil {
@@ -420,8 +378,7 @@ func (h *BaseAPIHandler) ExecuteWithAuthManager(ctx context.Context, handlerType
 	return resp.Payload, nil
 }
 
-// ExecuteCountWithAuthManager executes a non-streaming request via the core auth manager.
-// This path is the only supported execution route.
+// ExecuteCountWithAuthManager 通过核心认证管理器执行非流式请求，此路径是唯一支持的执行路由。
 func (h *BaseAPIHandler) ExecuteCountWithAuthManager(ctx context.Context, handlerType, modelName string, rawJSON []byte, alt string) ([]byte, *interfaces.ErrorMessage) {
 	providers, normalizedModel, errMsg := h.getRequestDetails(modelName)
 	if errMsg != nil {
@@ -464,8 +421,7 @@ func (h *BaseAPIHandler) ExecuteCountWithAuthManager(ctx context.Context, handle
 	return resp.Payload, nil
 }
 
-// ExecuteStreamWithAuthManager executes a streaming request via the core auth manager.
-// This path is the only supported execution route.
+// ExecuteStreamWithAuthManager 通过核心认证管理器执行流式请求，此路径是唯一支持的执行路由。
 func (h *BaseAPIHandler) ExecuteStreamWithAuthManager(ctx context.Context, handlerType, modelName string, rawJSON []byte, alt string) (<-chan []byte, <-chan *interfaces.ErrorMessage) {
 	providers, normalizedModel, errMsg := h.getRequestDetails(modelName)
 	if errMsg != nil {
@@ -660,7 +616,7 @@ func (h *BaseAPIHandler) getRequestDetails(modelName string) (providers []string
 	}
 
 	if len(providers) == 0 {
-		return nil, "", &interfaces.ErrorMessage{StatusCode: http.StatusBadGateway, Error: fmt.Errorf("unknown provider for model %s", modelName)}
+		return nil, "", &interfaces.ErrorMessage{StatusCode: http.StatusBadGateway, Error: fmt.Errorf("未知模型 %s 的提供方", modelName)}
 	}
 
 	// The thinking suffix is preserved in the model name itself, so no
@@ -677,7 +633,7 @@ func cloneBytes(src []byte) []byte {
 	return dst
 }
 
-// WriteErrorResponse writes an error message to the response writer using the HTTP status embedded in the message.
+// WriteErrorResponse 使用消息中嵌入的 HTTP 状态将错误消息写入响应。
 func (h *BaseAPIHandler) WriteErrorResponse(c *gin.Context, msg *interfaces.ErrorMessage) {
 	status := http.StatusInternalServerError
 	if msg != nil && msg.StatusCode > 0 {
@@ -743,6 +699,5 @@ func (h *BaseAPIHandler) LoggingAPIResponseError(ctx context.Context, err *inter
 	}
 }
 
-// APIHandlerCancelFunc is a function type for canceling an API handler's context.
-// It can optionally accept parameters, which are used for logging the response.
+// APIHandlerCancelFunc 是取消 API 处理器上下文的函数类型，可接受参数用于日志记录响应。
 type APIHandlerCancelFunc func(params ...interface{})

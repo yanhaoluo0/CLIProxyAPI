@@ -34,8 +34,7 @@ const (
 
 var dataTag = []byte("data:")
 
-// CodexExecutor is a stateless executor for Codex (OpenAI Responses API entrypoint).
-// If api_key is unavailable on auth, it falls back to legacy via ClientAdapter.
+// CodexExecutor 为 Codex（OpenAI Responses API 入口）的无状态执行器；auth 无 api_key 时通过 ClientAdapter 回退到旧逻辑。
 type CodexExecutor struct {
 	cfg *config.Config
 }
@@ -44,7 +43,7 @@ func NewCodexExecutor(cfg *config.Config) *CodexExecutor { return &CodexExecutor
 
 func (e *CodexExecutor) Identifier() string { return "codex" }
 
-// PrepareRequest injects Codex credentials into the outgoing HTTP request.
+// PrepareRequest 将 Codex 凭证注入出站 HTTP 请求。
 func (e *CodexExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth) error {
 	if req == nil {
 		return nil
@@ -61,10 +60,10 @@ func (e *CodexExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Aut
 	return nil
 }
 
-// HttpRequest injects Codex credentials into the request and executes it.
+// HttpRequest 将 Codex 凭证注入请求并执行。
 func (e *CodexExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return nil, fmt.Errorf("codex executor: request is nil")
+		return nil, fmt.Errorf("codex 执行器: 请求为 nil")
 	}
 	if ctx == nil {
 		ctx = req.Context()
@@ -148,7 +147,7 @@ func (e *CodexExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, re
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("codex executor: close response body error: %v", errClose)
+			log.Errorf("codex 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -252,7 +251,7 @@ func (e *CodexExecutor) executeCompact(ctx context.Context, auth *cliproxyauth.A
 	}
 	defer func() {
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("codex executor: close response body error: %v", errClose)
+			log.Errorf("codex 执行器: 关闭响应体错误: %v", errClose)
 		}
 	}()
 	recordAPIResponseMetadata(ctx, e.cfg, httpResp.StatusCode, httpResp.Header.Clone())
@@ -350,7 +349,7 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
 		data, readErr := io.ReadAll(httpResp.Body)
 		if errClose := httpResp.Body.Close(); errClose != nil {
-			log.Errorf("codex executor: close response body error: %v", errClose)
+			log.Errorf("codex 执行器: 关闭响应体错误: %v", errClose)
 		}
 		if readErr != nil {
 			recordAPIResponseError(ctx, e.cfg, readErr)
@@ -367,7 +366,7 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 		defer close(out)
 		defer func() {
 			if errClose := httpResp.Body.Close(); errClose != nil {
-				log.Errorf("codex executor: close response body error: %v", errClose)
+				log.Errorf("codex 执行器: 关闭响应体错误: %v", errClose)
 			}
 		}()
 		scanner := bufio.NewScanner(httpResp.Body)
@@ -423,12 +422,12 @@ func (e *CodexExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth
 
 	enc, err := tokenizerForCodexModel(baseModel)
 	if err != nil {
-		return cliproxyexecutor.Response{}, fmt.Errorf("codex executor: tokenizer init failed: %w", err)
+		return cliproxyexecutor.Response{}, fmt.Errorf("codex 执行器: 分词器初始化失败: %w", err)
 	}
 
 	count, err := countCodexInputTokens(enc, body)
 	if err != nil {
-		return cliproxyexecutor.Response{}, fmt.Errorf("codex executor: token counting failed: %w", err)
+		return cliproxyexecutor.Response{}, fmt.Errorf("codex 执行器: 计 token 失败: %w", err)
 	}
 
 	usageJSON := fmt.Sprintf(`{"response":{"usage":{"input_tokens":%d,"output_tokens":0,"total_tokens":%d}}}`, count, count)
@@ -458,7 +457,7 @@ func tokenizerForCodexModel(model string) (tokenizer.Codec, error) {
 
 func countCodexInputTokens(enc tokenizer.Codec, body []byte) (int64, error) {
 	if enc == nil {
-		return 0, fmt.Errorf("encoder is nil")
+		return 0, fmt.Errorf("encoder 为 nil")
 	}
 	if len(body) == 0 {
 		return 0, nil
@@ -559,7 +558,7 @@ func countCodexInputTokens(enc tokenizer.Codec, body []byte) (int64, error) {
 }
 
 func (e *CodexExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
-	log.Debugf("codex executor: refresh called")
+	log.Debugf("codex 执行器: 已调用 refresh")
 	if auth == nil {
 		return nil, statusErr{code: 500, msg: "codex executor: auth is nil"}
 	}

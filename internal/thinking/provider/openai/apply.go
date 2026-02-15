@@ -1,4 +1,4 @@
-// Package openai implements thinking configuration for OpenAI/Codex models.
+// Package openai 为 OpenAI/Codex 模型实现 thinking 配置。
 //
 // OpenAI models use the reasoning_effort format with discrete levels
 // (low/medium/high). Some models support xhigh and none levels.
