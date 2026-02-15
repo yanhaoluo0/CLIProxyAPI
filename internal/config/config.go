@@ -443,6 +443,11 @@ type OpenAICompatibility struct {
 	// BaseURL is the base URL for the external OpenAI-compatible API endpoint.
 	BaseURL string `yaml:"base-url" json:"base-url"`
 
+	// AllowedUserAgentPrefix restricts this provider to requests whose User-Agent starts with this value.
+	// When set, only such requests will be routed to this provider (e.g. "claude-cli" for Claude Code only).
+	// Empty means no restriction.
+	AllowedUserAgentPrefix string `yaml:"allowed-user-agent-prefix,omitempty" json:"allowed-user-agent-prefix,omitempty"`
+
 	// APIKeyEntries defines API keys with optional per-key proxy configuration.
 	APIKeyEntries []OpenAICompatibilityAPIKey `yaml:"api-key-entries,omitempty" json:"api-key-entries,omitempty"`
 

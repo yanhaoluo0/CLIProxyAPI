@@ -1649,6 +1649,18 @@ func (m *Manager) pickNextMixed(ctx context.Context, providers []string, model s
 		if modelKey != "" && registryRef != nil && !registryRef.ClientSupportsModel(candidate.ID, modelKey) {
 			continue
 		}
+		// OpenAI-compatibility: restrict by User-Agent when allowed_user_agent_prefix is set.
+		if candidate.Attributes != nil {
+			if prefix := strings.TrimSpace(candidate.Attributes["allowed_user_agent_prefix"]); prefix != "" {
+				userAgent := ""
+				if opts.Headers != nil {
+					userAgent = strings.TrimSpace(opts.Headers.Get("User-Agent"))
+				}
+				if !strings.HasPrefix(userAgent, prefix) {
+					continue
+				}
+			}
+		}
 		candidates = append(candidates, candidate)
 	}
 	if len(candidates) == 0 {

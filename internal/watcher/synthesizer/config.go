@@ -221,6 +221,9 @@ func (s *ConfigSynthesizer) synthesizeOpenAICompat(ctx *SynthesisContext) []*cor
 			if hash := diff.ComputeOpenAICompatModelsHash(compat.Models); hash != "" {
 				attrs["models_hash"] = hash
 			}
+			if v := strings.TrimSpace(compat.AllowedUserAgentPrefix); v != "" {
+				attrs["allowed_user_agent_prefix"] = v
+			}
 			addConfigHeadersToAttrs(compat.Headers, attrs)
 			a := &coreauth.Auth{
 				ID:         id,
@@ -251,6 +254,9 @@ func (s *ConfigSynthesizer) synthesizeOpenAICompat(ctx *SynthesisContext) []*cor
 			}
 			if hash := diff.ComputeOpenAICompatModelsHash(compat.Models); hash != "" {
 				attrs["models_hash"] = hash
+			}
+			if v := strings.TrimSpace(compat.AllowedUserAgentPrefix); v != "" {
+				attrs["allowed_user_agent_prefix"] = v
 			}
 			addConfigHeadersToAttrs(compat.Headers, attrs)
 			a := &coreauth.Auth{

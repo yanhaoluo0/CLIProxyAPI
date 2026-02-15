@@ -394,12 +394,13 @@ func (h *Handler) PutOpenAICompat(c *gin.Context) {
 }
 func (h *Handler) PatchOpenAICompat(c *gin.Context) {
 	type openAICompatPatch struct {
-		Name          *string                             `json:"name"`
-		Prefix        *string                             `json:"prefix"`
-		BaseURL       *string                             `json:"base-url"`
-		APIKeyEntries *[]config.OpenAICompatibilityAPIKey `json:"api-key-entries"`
-		Models        *[]config.OpenAICompatibilityModel  `json:"models"`
-		Headers       *map[string]string                  `json:"headers"`
+		Name                   *string                             `json:"name"`
+		Prefix                 *string                             `json:"prefix"`
+		BaseURL                *string                             `json:"base-url"`
+		AllowedUserAgentPrefix *string                             `json:"allowed-user-agent-prefix"`
+		APIKeyEntries          *[]config.OpenAICompatibilityAPIKey `json:"api-key-entries"`
+		Models                 *[]config.OpenAICompatibilityModel  `json:"models"`
+		Headers                *map[string]string                  `json:"headers"`
 	}
 	var body struct {
 		Name  *string            `json:"name"`
@@ -434,6 +435,9 @@ func (h *Handler) PatchOpenAICompat(c *gin.Context) {
 	}
 	if body.Value.Prefix != nil {
 		entry.Prefix = strings.TrimSpace(*body.Value.Prefix)
+	}
+	if body.Value.AllowedUserAgentPrefix != nil {
+		entry.AllowedUserAgentPrefix = strings.TrimSpace(*body.Value.AllowedUserAgentPrefix)
 	}
 	if body.Value.BaseURL != nil {
 		trimmed := strings.TrimSpace(*body.Value.BaseURL)
